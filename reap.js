@@ -392,6 +392,7 @@ const renderModal = (
     title,
     type = 'location',
     messageIdx = 0,
+    canLeave = true,
   },
 ) => {
   modal.style.display = 'block';
@@ -454,15 +455,12 @@ const renderModal = (
       }
       return '';
     };
-    if (visit.cantLeave) {
-      return `<div class="button-group vertical">
-        <button disabled>${visit.cantLeave}</button>
-      </div>`;
-    } else {
-      return `<div ${closeHidden()} class="button-group vertical" id="${leaveButtonID}">
-        <button value="x" class="vertical cb-btn">${makeButtonText()}</button>
-      </div>`;
+    if (!canLeave) {
+      return ``;
     }
+    return `<div ${closeHidden()} class="button-group vertical" id="${leaveButtonID}">
+      <button value="x" class="vertical cb-btn">${makeButtonText()}</button>
+    </div>`;
   };
   const renderMessage = () => {
     if (isClosed) {
