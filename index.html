@@ -6,11 +6,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css">
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css"> -->
+        <link rel="stylesheet" href="mini.min.css">
         <title>Re-entry Simulation Game</title>
         <style>
             [v-cloak] > * { display:none }
-            [v-cloak]::before { content: "Loading course data" }
+            [v-cloak]::before { content: "Loading game data" }
             canvas { width: 100%; }
             body { background-color: #fff; }
             #wrapper { position: relative; max-width: 800px; }
@@ -23,9 +24,8 @@
         <div class="container" id="wrapper">
             <div id="modal"></div>
             <canvas id="game">
-
             </canvas>
         </div>
-        <script src="reap.js"></script>
+        <script type="module" src="reap.js"></script>
     </body>
 </html>

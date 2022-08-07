@@ -1,0 +1,3 @@
+1. Film yourself as the probation officer so that visits to that station could video prompts
+2. Implement normdist in JavaScript and replace some "dice roll" functions with more realistic interactions
+3. Draw vector graphics to replace stock photos in modals

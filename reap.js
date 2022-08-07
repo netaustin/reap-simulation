@@ -1,38 +1,33 @@
+import { visitOptions } from './visitOptions.js';
+import { events, start_probation } from './events.js';
+
 (() => {
-
-/*
-TODO:
-
-Friday
-- Residential maps
-- Transit between maps, pick between walk or subway
-- Clock advances with activity
-- Health decreases if you don't eat
-
-Saturday
-- Food solves health problems
-- Have other possessions, clicking top bar shows them
-- Possessions unlock activities
-
-Sunday
-- Final scripts
-*/
 
 // kill these
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-let { width, height } = canvas.getBoundingClientRect();
+
+// move this to config
+
+const imgWithSource = (src) => {
+  const im = new Image();
+  im.src = src;
+  return im;
+};
+
+const IMGDIMS = { WIDTH: 1624, HEIGHT: 1157 };
+
+const bgs = {
+  'heights': imgWithSource('maps/heights.png'),
+  'heights-hover': imgWithSource('maps/heights-hover.png'),
+  'downtown': imgWithSource('maps/downtown.png'),
+  'downtown-hover': imgWithSource('maps/downtown-hover.png'),
+};
 
 const config = () => {
-  cfg = [];
-
-  const govtHours = [false, [8, 15], [8, 15], [8, 15], [8, 15], [8, 15], false];
-  const commerceHours = [[8, 19], [7, 21], [7, 21], [7, 21], [7, 21], [7, 21], [8, 20]];
-  const churchHours = [[8, 13], [10, 16], [10, 21], [10, 16], [10, 16], [10, 16], [11, 15]];
-
   const colors = {
     WHITE: '#ffffff',
-    BLACK: '#000000',
+    BLACK: '#232323',
     GRAY: '#dddddd',
     PINK: '#ba8f95',     // used by non-profits
     YELLOW: '#ffbe0b',   // used by governments
@@ -42,462 +37,278 @@ const config = () => {
     DARKBLUE: '#4169e1', // used by housing
     PURPLE: '#8e7dbe',   // used by commerce
     BROWN: '#826754',    // used by workplaces
+    MAP: '#eeeadf',      // used by the map background
+  };
+
+  const waitingMessages = {
+    lines: [
+      [], // 0 hours, no messages
+      ['You are waiting in a line.', 'You hope this line moves quickly.',],
+      ['This line looks a little long.', 'Guess you\'ll have to wait',],
+      ['Oh no, this could take all day.', 'You are beginning to wish you had a snack.'],
+      ['Waiting in lines like this is so demoralizing.', 'You cannot see the end of this terrible line.'],
+    ],
+    timeout: [
+      'This does not look promising.',
+      'Wait, this place is closing!',
+      'Where are the workers going??',
+    ],
   };
 
   const maps = {
     downtown: [
       // top row
-      { row: 0, col: 0, name: 'jail', fillStyle: colors.YELLOW, title: 'City Jail', },
-      { row: 0, col: 1, name: 'courthouse', fillStyle: colors.YELLOW, title: 'Courthouse', },
-      { row: 0, col: 2, name: 'countyclerk', fillStyle: colors.YELLOW, title: 'County Clerk', },
-      { row: 0, col: 3, name: 'church', fillStyle: colors.PINK, title: 'St. Jude\'s Church', },
-      { row: 0, col: 4, name: 'shelter', fillStyle: colors.DARKBLUE, title: 'Homeless Shelter', },
+      { pos: [[145, 100], [385, 345]], name: 'jail', fillStyle: colors.YELLOW, title: 'City Jail', },
+      { pos: [[420, 100], [675, 345]], name: 'courthouse', fillStyle: colors.YELLOW, title: 'Courthouse', },
+      { pos: [[695, 100], [950, 345]], name: 'countyclerk', fillStyle: colors.YELLOW, title: 'County Clerk', },
+      { pos: [[975, 100], [1235, 345]], name: 'church', fillStyle: colors.PINK, title: 'St. Jude\'s Church', },
+      { pos: [[1235, 100], [1495, 345]], name: 'shelter', fillStyle: colors.DARKBLUE, title: 'Homeless Shelter', },
       // second row
-      { row: 1, col: 0, name: 'dmv', fillStyle: colors.YELLOW, title: 'DMV', },
-      { row: 1, col: 1, rowspan: 2, colspan: 2, name: 'park', title: 'Buchanan Square Park', fillStyle: colors.GREEN, },
-      { row: 1, col: 3, colspan: 2, name: 'clinic', fillStyle: colors.RED, title: 'Medical Center', },
+      { pos: [[145, 360], [385, 600]], name: 'dmv', fillStyle: colors.YELLOW, title: 'DMV', },
+      { pos: [[420, 360], [950, 855]], name: 'park', title: 'Buchanan Square Park', fillStyle: colors.GREEN, },
+      { pos: [[975, 360], [1495, 600]], name: 'clinic', fillStyle: colors.RED, title: 'Medical Center', },
       // third row
-      { row: 2, col: 0, name: 'bank', fillStyle: colors.PURPLE, title: 'First City Bank', },
-      { row: 2, col: 3, name: 'shoppingcenter', fillStyle: colors.PURPLE, title: 'Shopping Center', },
-      { row: 2, col: 4, rowspan: 2, name: 'warehouse', title: 'Savealot Warehouse', fillStyle: colors.BROWN, },
+      { pos: [[145, 625], [385, 855]], name: 'bank', fillStyle: colors.PURPLE, title: 'First City Bank', },
+      { pos: [[975, 615], [1225, 855]], name: 'shoppingcenter', fillStyle: colors.PURPLE, title: 'Shopping Center', },
+      { pos: [[1235, 615], [1495, 1115]], name: 'warehouse', title: 'Savealot Warehouse', fillStyle: colors.BROWN, },
       // fourth row
-      { row: 3, col: 0, name: 'employment', title: 'Career Center', fillStyle: colors.PINK, },
-      { row: 3, col: 1, name: 'downtownstation', fillStyle: colors.BLUE, title: 'Metro Station', },
-      { row: 3, col: 2, name: 'joescafe', fillStyle: colors.PURPLE, title: 'Joe\'s Cafe', },
-      { row: 3, col: 3, name: 'plasma', fillStyle: colors.RED, title: 'Plasma Bank', },
+      { pos: [[145, 870], [385, 1115]], name: 'employment', title: 'Career Center', fillStyle: colors.PINK, },
+      { pos: [[420, 870], [675, 1115]], name: 'downtownstation', fillStyle: colors.BLUE, title: 'Metro Station', },
+      { pos: [[695, 870], [950, 1115]], name: 'pronto', fillStyle: colors.PURPLE, title: 'Pronto Cafe', },
+      { pos: [[975, 870], [1235, 1115]], name: 'plasma', fillStyle: colors.RED, title: 'Plasma Bank', },
     ],
     heights: [
-      { row: 0, col: 0, name: 'chancesbar', title: 'Chance\'s Bar and Grill', fillStyle: colors.PURPLE, },
-      { row: 0, col: 1, rowspan: 2, name: 'construction', title: 'Acme Construction Co.', fillStyle: colors.BROWN, },
-      { row: 0, col: 2, name: 'halfwayhouse', title: 'Halfway Home', fillStyle: colors.DARKBLUE, },
-      { row: 0, col: 3, name: 'playground', title: 'Playground', fillStyle: colors.GREEN, },
-      { row: 0, col: 4, name: 'police', title: 'Police Precinct', fillStyle: colors.YELLOW, },
+      { pos: [[145, 100], [405, 345]], name: 'chancesbar', title: 'Chance\'s Bar', fillStyle: colors.PURPLE, },
+      { pos: [[420, 100], [680, 600]], name: 'construction', title: 'Acme Construction.', fillStyle: colors.BROWN, },
+      { pos: [[685, 100], [960, 345]], name: 'halfwayhouse', title: 'Halfway Home', fillStyle: colors.DARKBLUE, },
+      { pos: [[960, 100], [1223, 345]], name: 'playground', title: 'Playground', fillStyle: colors.GREEN, },
+      { pos: [[1237, 100], [1493, 345]], name: 'police', title: 'Police Precinct', fillStyle: colors.YELLOW, },
     
-      { row: 1, col: 0, name: 'diner', title: 'Jane\'s Diner', fillStyle: colors.PURPLE, },
-      { row: 1, col: 2, colspan: 2, name: 'heightshousing', title: 'Heights Public Housing', fillStyle: colors.DARKBLUE, },
-      { row: 1, col: 4, title: 'Shop \'n Stuff Grocery', name: 'grocery', fillStyle: colors.PURPLE, },
+      { pos: [[145, 355], [405, 600]], name: 'diner', title: 'Jane\'s Diner', fillStyle: colors.PURPLE, },
+      { pos: [[685, 355], [1223, 600]], name: 'heightshousing', title: 'Heights Public Housing', fillStyle: colors.DARKBLUE, },
+      { pos: [[1237, 355], [1493, 600]], title: 'Shop \'n Stuff Grocery', name: 'grocery', fillStyle: colors.PURPLE, },
     
-      { row: 2, col: 0, name: 'discountmedical', title: 'Discount Medical', fillStyle: colors.RED, },
-      { row: 2, col: 1, colspan: 2, name: 'heightspark', title: 'Heights Park', fillStyle: colors.GREEN, },
-      { row: 2, col: 3, name: 'pawnshop', title: 'Rick\'s Pawn Shop', fillStyle: colors.PURPLE, },
-      { row: 2, col: 4, rowspan: 2, name: 'janitorservices', fillStyle: colors.BROWN, title: 'Janitor Services', },
+      { pos: [[145, 622], [405, 856]], name: 'discountmedical', title: 'Discount Medical', fillStyle: colors.RED, },
+      { pos: [[420, 622], [952, 856]], name: 'heightspark', title: 'Heights Park', fillStyle: colors.GREEN, },
+      { pos: [[960, 622], [1223, 856]], name: 'pawnshop', title: 'Rick\'s Pawn Shop', fillStyle: colors.PURPLE, },
+      { pos: [[1237, 622], [1493, 856]], name: 'janitorservices', fillStyle: colors.BROWN, title: 'Janitor Services', },
     
-      { row: 3, col: 0, name: 'heightschurch', fillStyle: colors.PINK, title: 'Heights Baptist Church', },
-      { row: 3, col: 1, name: 'heightsstation', fillStyle: colors.BLUE, title: 'Metro Station', },
-      { row: 3, col: 2, name: 'probation', fillStyle: colors.YELLOW, title: 'Probation Office', },
-      { row: 3, col: 3, name: 'counseling', fillStyle: colors.PINK, title: 'Counseling Center', },
+      { pos: [[1, 872], [405, 1116]], name: 'heightschurch', fillStyle: colors.PINK, title: 'Heights Baptist Church', },
+      { pos: [[420, 872], [685, 1116]], name: 'heightsstation', fillStyle: colors.BLUE, title: 'Metro Station', },
+      { pos: [[685, 872], [952, 1116]], name: 'probation', fillStyle: colors.YELLOW, title: 'Probation Office', },
+      { pos: [[960, 872], [1223, 1116]], name: 'counseling', fillStyle: colors.PINK, title: 'Counseling Center', },
+      { pos: [[1237, 872], [1493, 1116]], name: 'communitycollege', fillStyle: colors.PINK, title: 'Community College', },
     ],
   };
 
-  const visitOptions = {
-    cityJail: {
-      message: 'You would rather not be here.',
-    },
-    courthouse: {
-      message: 'You can pay restitution here.',
-      hours: govtHours,
-      options: [
-        {
-          title: 'Pay restitution ($200)',
-          money: -200,
-          give: { name: 'rreceipt', title: 'Restitution Receipt', quantity: 1 },
-        },
-      ],
-    },
-    countyclerk: {
-      message: 'Welcome to the County Clerk\'s office.',
-      hours: govtHours,
-      options: [
-        {
-          title: 'Order a copy of your birth certificate ($35)',
-          withoutAny: ['birthcertificate', 'birthcertificatereceipt'],
-          money: -35,
-          time: 2,
-          addEvents: [
-            {
-              message: 'Check back in a week for your birth certificate.',
-              schedule: 0,
-              photo: 'countyclerk',
-              title: 'Have a nice day',
-              closeButtonText: 'Okay',
-              exitTransaction: {
-                'give': { name: 'birthcertificatereceipt', quantity: 1, title: 'Birth Certificate Order Receipt' },
-              },
-            },
-          ],
-          addLocationEvents: [
-            {
-              location: 'countyclerk',
-              schedule: (24 * 7),
-              time: 1,
-              message: 'Here is your birth certificate',
-              closeButtonText: 'Take the birth certificate',
-              exitTransaction: {
-                'take': 'birthcertificatereceipt',
-                'give': { name: 'birthcertificate', quantity: 1, title: 'Birth Certificate' }
-              }
-            }
-          ]
-        },
-        {
-          title: 'Buy a seasonal fishing license ($80)',
-          withoutAny: ['id'],
-          money: -80,
-          give: { name: 'fishinglicense', title: 'Fishing License', quantity: 1 },
-          time: 2,
-        },
-      ],
-      exitTransaction: {
-        time: 2,
-      },
-    },
-    church: {
-      message: `Welcome to St. Jude\'s Episcopal Church. We serve a free hearty
-        meal on Saturdays from 10-1, and twelve-step groups meet here weekly.`,
-      options: [
-        {
-          title: 'Wait in line for a healthy, hearty meal',
-          hours: [false, false, false, false, false, false, [10, 13]],
-          health: 10,
-          time: 2,
-        },
-        {
-          title: 'Attend Narcotics Anonymous',
-          hours: [false, false, [19, 20], false, false, false, false],
-          give: { name: 'nacard', title: 'Narcotics Anonymous Voucher' },
-          health: 10,
-          time: 2,
-        },
-        {
-          title: 'Put something in the collection box ($5)',
-          money: -5,
-        },
-        {
-          title: 'Steal the collection box',
-          randMoney: 50,
-          risk: 0.45,
-        },
-      ]
-    },
-    plasma: {
-      message: 'Donate plasma for cash! Once every three days. If you donated recently you cannot donate again. It takes three hours to donate.',
-      options: [
-        {
-          title: 'Donate ($35)',
-          money: 35,
-          time: 36,
-          health: -10,
-          without: ['plasmacard'],
-          give: { name: 'plasmacard', title: 'Plasma Contribution Receipt',},
-          addEvents: [{
-            schedule: 3, // need to wipe out cards on reset
-            title: 'Plasma Bank Here!',
-            photo: 'plasma',
-            message: 'You can donate plasma again. Our community\'s need is as grave as ever!',
-            exitTransaction: {
-              take: 'plasmacard',
-            },
-          }],
-        }
-      ],
-    },
-    diner: {
-      message: 'Enjoy a big plate of greasy fries.',
-      options: [
-        {
-          title: 'The fries, please! ($5)',
-          time: 1,
-          money: -5,
-          health: 5,
-        },
-        {
-          title: 'Turkey club and a greek salad! ($11)',
-          time: 1,
-          money: -11,
-          health: 11,
-        },
-      ],
-    },
-    halfwayhouse: {
-      message: 'A safe place for a good night\'s sleep.',
-      options: [
-        {
-          title: 'Go to bed',
-          time: 8,
-          health: 7,
-        },
-      ],
-    },
-    downtownstation: {
-      message: 'Take our beautiful and clean light rail to Uptown Heights!',
-      // cantLeave: 'The metro station is closed',
-      options: [
-        {
-          title: 'Sure! ($3)',
-          money: -3,
-          travel: 'heights',
-          time: 1,
-        },
-        {
-          title: 'Jump the turnstile ($0)',
-          risk: 0.2,
-          time: 1,
-          travel: 'heights',
-        },
-        {
-          title: 'No thanks, I\'ll walk (3h)',
-          travel: 'heights',
-          health: 1,
-          time: 3,
-        },
-      ],
-    },
-    park: {
-      message: 'Take a walk in beautiful Buchanan Park',
-      options: [
-        {
-          title: 'Spend a quiet hour here',
-          health: 2,
-          time: 1,
-        },
-        {
-          title: 'Pick a pocket',
-          health: -3,
-          time: 1,
-          randMoney: 80,
-          risk: 0.25,
-        },
-      ]
-    },
-    // things happen in the heights
-    heightsstation: {
-      message: 'Take our beautiful and clean light rail Downtown!',
-      options: [
-        {
-          title: 'Sure! ($3)',
-          money: -3,
-          travel: 'downtown',
-        },
-        {
-          title: 'Jump the turnstile ($0)',
-          risk: 0.2,
-          travel: 'downtown',
-        },
-        {
-          title: 'No thanks, I\'ll walk (3h)',
-          travel: 'downtown',
-          health: -2,
-          time: 3,
-        }
-      ],
-    },
-    pawnshop: {
-      message: 'You can sell Rick your stuff, and he\'ll give you a "fair" price.',
-      hours: [false, [10, 19], [10, 19], [10, 19], [10, 19], [10, 21], [10, 21]],
-      options: [
-        {
-          title: 'Sell your grandfather\'s watch for $75',
-          money: 75,
-          health: -10,
-          time: 1,
-          with: ['watch'],
-          take: 'watch',
-        },
-      ],
-    },
+  const itemTable = {
+    watch: { title: 'Your grandfather\'s gold watch', max: 1 },
+    ssn: { title: 'Social Security Card', max: 1 },
+    restitutionreceipt: { title: 'Restitution Receipt', },
+    birthcertificatereceipt: { title: 'Birth Certificate Order Receipt' },
+    birthcertificate: { title: 'Birth Certificate', max: 1, },
+    fishinglicense: { title: 'Fishing License', max: 1 },
+    stateid: { title: 'State ID Card' },
+    plasmacard: { title: 'Plasma Donation Record',},
+    halfwayhouseinvite: { hidden: true, },
+    halfwayhousekey: { title: 'Halfway House Key' },
+    pouareq: { title: 'UA form from Probation Officer' },
+    pouapass: { title: 'UA results for Probation Officer', hidden: true },
+    pouafail: { title: 'UA results for Probation Officer', hidden: true, },
+    jobuareq: { title: 'UA form from Hiring Manager' },
+    jobuapass: { title: 'UA results for Hiring Manager', hidden: true, },
+    jobuafail: { title: 'UA results for Hiring Manager', hidden: true, },
+    debitcard: { title: 'Debit Card' },
+    workboots: { title: 'Work Boots' },
   };
-  const jailed = {
-    title: 'You are in jail',
-    photo: 'jail',
-    message: 'We\'ll let you know when your next court appearance is. Until then, sit tight.',
-    schedule: 0,
-    exitTransaction: {
-      makeMorning: true,
-      setHealth: 80,
-      time: 1,
-    },
-  };
-  const start_probation = {
-    location: 'probation',
-    schedule: 2,
-    late: -1,
-    time: 1,
-    lateMessage: 'You\'re late.',
-    messageHTML: `
-      <p>I'm your probation officer. We will meet at least once each week
-      during the first month of your probation.</p>
-      <ul>
-        <li>Being late to an appointment is a violation of your probation.</li>
-        <li>You have been placed in a Halfway House, not too far from here.</li>
-        <li>You must find work within thirty days and begin paying half of your income in rent.</li>
-        <li>Each week, you must attend Narcotics Anonymous and Anger Management Therapy.</li>
-        <li>You must also complete a Urinalysis (UA) test each week.</li>
-        <li>Within your first month, you must pay $200 in restitution at the Courthouse.</li>
-        <li>Here's a schedule to put in your backpack (click on "items", top right).</li>
-      </ul>
-      <p>Go directly to the halfway house and settle in, and I will see you next week.</p>`,
-    exitTransaction: {
-      addToCalendar: [
-        { name: 'na1', title: '7pm Tuesday: Narcotics anonymous at St. Jude\'s Church', },
-        { name: 'na2', title: '9pm Tuesday: Narcotics anonymous at Heights Church', },
-        { name: 'angerManagement', title: '10am Friday: Anger Management at Counseling Center', },
-      ],
-      time: 1,
-    },
-  };
-  const restart_probation = {
-    title: 'Restart Probation',
-    photo: 'probation',
-    message: 'You are out of jail, and you need to report to the probation office within the hour.',
-    schedule: 0,
-    exitTransaction: {
-      addLocationEvents: [{
-        ...start_probation,
-        schedule: 0,
-        exitTransaction: {},
-        messageHTML: `<p>Are you ready to try this again? The same provisions of your probation still
-          apply, but unfortunately there is not a housing placement available for you, so you will need
-          to arrange for your own housing. I will see you next week.</p>`,
-        lateMessage: 'This is unacceptable. You cannot be late to probation appointments.',
-      }],
-    }
-  };
-  const guilty_transaction = {
-    time: (6 * 24 * 7),
-    makeMonday: true,
-    setHealth: 70,
-    addEvents: [ restart_probation ],
-  };
-  const guilty_sentence = {
-    title: 'Sentencing',
-    photo: 'courthouse',
-    message: 'The court accepts your plea and sentences you to six weeks in the city jail',
-    schedule: 0,
-    exitTransaction: guilty_transaction,
-  };
-  const not_guilty_sentence = {
-    ...guilty_sentence,
-    message: 'The court finds you guilty and sentences you to eighteen weeks in jail.',
-    exitTransaction: { ...guilty_transaction, time: (18 * 24 * 7) },
-  };
-  const arraignment = {
-    title: 'Arraignment',
-    photo: 'courthouse',
-    schedule: 0,
-    message: `You are charged with a crime. Considering your recent release from
-      prison, I am setting your bond to $10,000 and sending you back to jail,
-      pending a trial, which is scheduled for six weeks from today. If you
-      wish to accept a plea bargain, you may do so now.`,
-    options: [
-      {
-        title: 'Plead guilty and spend the next six weeks in jail.',
-        addEvents: [
-          guilty_sentence,
-        ],
-      },
-      {
-        title: 'Plead not guilty',
-        addEvents: [
-          {
-            ...jailed,
-            exitTransaction: {
-              addEvents: [ not_guilty_sentence ],
-              time: 5 * 24 * 7,
-              setHealth: 70,
-              makeMonday: true,
-            }, 
-          },
-        ],
-      }
-    ],
-  };
-  const events = {
-    outofprison: {
-      title: 'Home from Ten Years in Prison',
-      message: `You\'ve been in prison for ten years, and today you\'re out on
-        probation. You have $100 you saved from your prison job, and your
-        social security card. You received a G.E.D. while in prison. The prison
-        staff put you on a bus to Central City, and here you are.`,
-      photo: 'jail',
-      closeButtonText: 'Next',
-    },
-    meetpo: {
-      title: 'Meet your Probation Officer',
-      message: `You have to check in with your probation officer at 11am. The
-        probabation office in in Uptown Heights, so you'll need to figure out
-        how to get there quickly.`,
-        photo: 'probation',
-      closeButtonText: 'Get Started',
-    },
-    arrest: {
-      title: 'Hold it right there!',
-      message: 'You\'re on probation? I have to take you to jail.',
-      photo: 'police',
-      violation: true,
-      exitTransaction: {
-        reset: true,
-        time: 1,
-        addEvents: [ jailed, arraignment ],
-      },
-    },
-  };
+
+  const startTime = new Date('January 3, 2022 09:00:00');
   const player = {
     money: 100,
     health: 100,
     map: 'downtown',
     home: 'halfwayhouse',
-    time: new Date('January 3, 2022 09:00:00'),
+    time: startTime,
     violations: 0,
-    items: [
-      { name: 'ssn', title: 'Social Security Card', quantity: 1 },
-      { name: 'watch', title: 'Your grandfather\'s gold watch', quantity: 1 },
-    ],
+    items: ['watch', 'ssn', 'halfwayhouseinvite'],
     locationEvents: [
       start_probation,
     ],
+    lastMeal: startTime,
+    lastProbation: startTime,
+    lastStrength: startTime,
     calendar: [],
     events: [
       { name: 'outofprison', schedule: 0 },
       { name: 'meetpo', schedule: 0 },
     ],
   };
-  return { colors, maps, visitOptions, events, player };
+  return { colors, maps, visitOptions, events, player, waitingMessages, itemTable };
 };
 
 const advanceTime = (time, hours) =>
   new Date(time.getTime() + (hours * 3600000));
 
-const transact = ({ player }, dispatch, rawOption) => {
+const getHoursDiff = (start, end) =>
+  Math.round(Math.abs(end - start) / (1000 * 60 * 60));
+
+const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
+
+const randomize = (struct) => {
+  if (typeof struct == 'number') {
+    return struct;
+  } else if (struct.random == 'uniform') {
+    return Math.floor(Math.random() * (struct.max + 1 - struct.min) ) + struct.min;
+  }
+};
+
+const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, location, waitTime, next) => {
+  // will the store close while we're in line?
+  const dow = player.time.getDay();
+  const hours = visitOptions[location.name].hours;
+  const isClosing = (player.time.getHours() + waitTime >= hours[dow][1]);
+  const kickedOut = () => renderModal(
+    { player }, 
+    dispatch,
+    {
+      ...location,
+      ...visitOptions[location.name],
+      title: 'Oh no!',
+      message: `${location.title} closed while you were waiting in line! You will have to return some other day.`,
+      closeButtonText: `Leave ${location.title}`,
+      exitTransaction: { time: waitTime },
+      options: [],
+    },
+  );
+  renderModal(
+    { player },
+    dispatch,
+    {
+      ...location,
+      ...visitOptions[location.name],
+      title: `Waiting in line at ${location.title}`,
+      message: pickOne(waitingMessages.lines[waitTime]),
+      closeButtonText: 'It\'s your turn!',
+      waitToCloseMS: waitTime * 4000,
+      onComplete: isClosing ? kickedOut : next,
+      autoClose: isClosing,
+      options: [],
+    },
+  );
+}
+
+const maxWaitForLocation = ({ player, visitOptions }, location, waitObj) => {
+  const waitTime = randomize(waitObj);
+  const hours = visitOptions[location.name].hours;
+  const testTime = new Date(player.time);
+  testTime.setHours(testTime.getHours() + waitTime);
+  if (time_between(testTime, hours)) {
+    return waitTime;
+  }
+  const dow = player.time.getDay();
+  return hours[dow][1] - player.time.getHours();
+}
+
+const playerHasItem = (player, itemName) => player.items.find((item) => item == itemName);
+const playerHasAny = (player, itemNames) => {
+  for (const i in itemNames) {
+    if (playerHasItem(player, itemNames[i])) {
+      return true;
+    }
+  }
+  return false;
+};
+const playerHasAll = (player, itemNames) => {
+  for (const i in itemNames) {
+    if (!playerHasItem(player, itemNames[i])) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const hoursToHealth = (hours) => hours * 2;
+
+const transact = (state, dispatch, rawOption, location) => {
+  const { player } = state;
   const option = {
     money: 0,
     travel: '',
     health: 0,
     time: 0,
+    wait: false,
+    give: [],
+    take: [],
   };
   Object.assign(option, rawOption);
   const playerState = Object.assign({}, player);
-  playerState.money += option.money;
-  if (option.time) {
+  if (option.time + playerState.accruedTime > 0) {
+    const timeToAdvance = playerState.accruedTime + option.time;
+    playerState.accruedTime = 0;
     const scheduleEvents = (e, time) => {
       e.schedule -= time;
       return e;
-    }
-    playerState.time = advanceTime(playerState.time, option.time);
-    playerState.health -= option.time;
-    playerState.events = playerState.events.map((e) => scheduleEvents(e, option.time));
-    playerState.locationEvents = playerState.locationEvents.map((e) => scheduleEvents(e, option.time));
+    };
+    playerState.time = advanceTime(playerState.time, timeToAdvance);
+    playerState.health -= hoursToHealth(timeToAdvance);
+    playerState.events = playerState.events.map((e) => scheduleEvents(e, timeToAdvance));
+    playerState.locationEvents = playerState.locationEvents.map((e) => scheduleEvents(e, timeToAdvance));
   }
-
+  if (option.makeMorning) {
+    while(playerState.time.getHours() !== 9) {
+      playerState.health -= hoursToHealth(1);
+      playerState.time = advanceTime(playerState.time, 1);
+    }
+  }
+  // we can skip health here because the player always gets reset
+  if (option.makeMonday) {
+    while(playerState.time.getDay() !== 1) {
+      playerState.time = advanceTime(playerState.time, 1);
+    }
+    option.makeMorning = true;
+  }
+  if (option.money) {
+    if (option.money < 0 && (-1 * option.money) > playerState.money) {
+      playerState.events.unshift({
+        title: 'Too expensive!',
+        message: 'You cannot afford that',
+        photo: location,
+        schedule: 0,
+      });
+      dispatch({ player: playerState });
+      return;
+    }
+    playerState.money += option.money;
+  }
+  if ((option.failWithoutAny && !playerHasAny(player, option.failWithoutAny)) ||
+      (option.failWithoutAll && !playerHasAll(player, option.failWithoutAll))) {
+    const neededNames = option.failWithoutAny ? option.failWithoutAny : option.failWithoutAll;
+    const needed = neededNames.map((itemName) => state.itemTable[itemName].title);
+    playerState.events.unshift({
+      ...state.visitOptions[location],
+      title: 'Missing something',
+      message: `You are missing some or all of the required items: ${needed.join(', ')}`,
+      photo: location,
+      schedule: 0,
+    });
+    dispatch({ player: playerState });
+    return;
+  }
   if (option.reset) { // the player's life is on a new course.
     playerState.events = [];
     playerState.locationEvents = [];
     playerState.money = 0;
+    playerState.lastMeal = playerState.time;
+    option.take.push('halfwayhousekey');
   }
   if (option.travel) {
     playerState.map = option.travel;
   }
   if (option.health) {
     playerState.health += option.health;
+  }
+  if (option.food) {
+    playerState.lastMeal = playerState.time;
   }
   if (option.risk && option.risk > Math.random()) {
     playerState.events.push({ name: 'arrest', schedule: 0, });
@@ -509,12 +320,16 @@ const transact = ({ player }, dispatch, rawOption) => {
     playerState.calendar = [...playerState.calendar, ...option.addToCalendar];
   }
   if (option.give) {
-    playerState.items.push(option.give);
+    playerState.items.push(...option.give);
   }
   if (option.take) {
-    const taken = playerState.items.find((item) => item.name == option.take);
-    const takenIdx = playerState.items.indexOf(taken);
-    playerState.items.splice(takenIdx, 1);
+    // TODO: refactor
+    for (const idx in option.take) {
+      const takeName = option.take[idx];
+      const taken = playerState.items.find((item) => item == takeName);
+      const takenIdx = playerState.items.indexOf(taken);
+      playerState.items.splice(takenIdx, 1);
+    }
   }
   // must avoid deep copy issues
   if (option.addEvents) {
@@ -525,17 +340,6 @@ const transact = ({ player }, dispatch, rawOption) => {
   }
   if (option.violation) {
     playerState.violations++;
-  }
-  if (option.makeMonday) {
-    while(playerState.time.getDay() !== 1) {
-      playerState.time = advanceTime(playerState.time, 1);
-    }
-    option.makeMorning = true;
-  }
-  if (option.makeMorning) {
-    while(playerState.time.getHours() !== 9) {
-      playerState.time = advanceTime(playerState.time, 1);
-    }
   }
   if (option.setHealth) {
     playerState.health = option.setHealth;
@@ -548,36 +352,6 @@ const time_between = (time, hoursByDay) => {
   const hours = hoursByDay[dow];
   const current = time.getHours() || [0, 0];
   return (current >= hours[0] && current < hours[1]);
-};
-
-const filter_options = ({ player }, options) => {
-  const final = [];
-  const missing = (items) =>
-    items.filter((item) => !player.items.find((playerItem) => playerItem.name == item));
-  // some options require the user to possess, or not possess, an item.
-  return options.filter((opt) => {
-    if (opt.with) {
-      if (missing(opt.with).length) {
-        return false;
-      }
-    }
-    if (opt.without) {
-      if (missing(opt.without).length !== opt.without.length) {
-        return false;
-      }
-    }
-    if (opt.withoutAny) {
-      if (missing(opt.withoutAny).length < opt.withoutAny.length) {
-        return false;
-      }
-    }
-    if (opt.hours) {
-      if (!time_between(player.time, opt.hours)) {
-        return false;
-      }
-    }
-    return true;
-  })
 };
 
 const openHours = (days) => {
@@ -602,6 +376,7 @@ const renderModal = (
   state,
   dispatch,
   {
+    waitToCloseMS = 0,
     closeButtonText = '',
     exitTransaction = {},
     fillStyle,
@@ -616,6 +391,7 @@ const renderModal = (
     schedule,
     title,
     type = 'location',
+    messageIdx = 0,
   },
 ) => {
   modal.style.display = 'block';
@@ -623,21 +399,45 @@ const renderModal = (
     modal.innerHTML = '';
     modal.style.display = 'none';
   };
+  const messageIsList = (typeof messageHTML == 'object');
   const isClosed = (hours && !time_between(state.player.time, hours));
-  const filtered = filter_options(state, options);
+  const filtered = options.filter((opt) => {
+    if (opt.hideWithoutAny) {
+      if (!playerHasAny(state.player, opt.hideWithoutAny)) {
+        return false;
+      }
+    }
+    if (opt.hideWithoutAll) {
+      if (!playerHasAll(state.player, opt.hideWithoutAll)) {
+        return false;
+      }
+    }
+    if (opt.hideWithAny) {
+      if (playerHasAny(state.player, opt.hideWithAny)) {
+        return false;
+      }
+    }
+    if (opt.hours) {
+      if (!time_between(state.player.time, opt.hours)) {
+        return false;
+      }
+    }
+    return true;
+  });
   const transactButtons = () => {
     if (isClosed) {
       return '';
     }
     return filtered.map(
       (opt, i) => {
-        const disabled = (opt.money && opt.money < 0 && (-1 * opt.money) > state.player.money) ? 'disabled' : '';
         return `<div class="button-group vertical">
-          <button ${disabled} class="vertical cb-btn" value="${i}">${opt.title}</button>
+          <button class="vertical cb-btn" value="${i}">${opt.title}</button>
         </div>`
       }
     ).join('');
   }
+  const leaveButtonID = self.crypto.randomUUID();
+  const messageID = self.crypto.randomUUID();
   const leaveButton = () => {
     const makeButtonText = () => {
       if (closeButtonText) {
@@ -648,16 +448,22 @@ const renderModal = (
       }
       return 'Okay';
     }
+    const closeHidden = () => {
+      if (waitToCloseMS > 0) {
+        return `style="visibility: hidden;"`
+      }
+      return '';
+    };
     if (visit.cantLeave) {
       return `<div class="button-group vertical">
         <button disabled>${visit.cantLeave}</button>
       </div>`;
     } else {
-      return `<div class="button-group vertical">
+      return `<div ${closeHidden()} class="button-group vertical" id="${leaveButtonID}">
         <button value="x" class="vertical cb-btn">${makeButtonText()}</button>
       </div>`;
     }
-  }
+  };
   const renderMessage = () => {
     if (isClosed) {
       return '<p><em>We are currently closed.</em></p>'
@@ -665,11 +471,17 @@ const renderModal = (
     if (message.length == 0 && messageHTML.length == 0) {
       return '<p>Nothing to do here.</p>';
     }
-    return message ? `<p>${message}</p>` : messageHTML;
-  }
+    if (messageIsList) {
+      return messageHTML[messageIdx];
+    }
+    if (messageHTML.length) {
+      return messageHTML;
+    }
+    return message;
+  };
   const photoName = photo ? photo : name;
   const renderLateMessage = () => (lateMessage && schedule < 0) ? `<p>${lateMessage}</p>` : '';
-  modal.innerHTML = `<div class="choice-box card">
+    modal.innerHTML = `<div class="choice-box card">
       <div class="section" style="background-color: ${fillStyle}" >
         <h2 class="col-sm-12">${title}</h2>
         ${openHours(hours)}
@@ -681,24 +493,57 @@ const renderModal = (
           </div>
           <div class="col-sm-9">
             ${renderLateMessage()}
-            ${renderMessage()}
+            <div id="${messageID}">
+              ${renderMessage()}
+            </div>
             ${transactButtons()}
             ${leaveButton()}
           </div>
         </div>
       </div>
     </div>`;
+    if (waitToCloseMS > 0) {
+      const timer = document.createElement('p');
+      // const timerId = self.crypto.randomUUID();
+      // timer.setAttribute('id', timerId);
+      document.getElementById(messageID).append(timer);
+      let timecounter = 1;
+      const tickTimer = () => {
+        const totalminutes = timecounter * 15;
+        const hours = Math.floor(totalminutes / 60);
+        const minutes = totalminutes % 60;
+        if (hours > 0) {
+          const hoursword = hours > 1 ? 'hours' : 'hour';
+          timer.innerHTML = `<em>You've been waiting for ${hours} ${hoursword} and ${minutes} minutes.</em>`;
+        } else {
+          timer.innerHTML = `<em>You've been waiting for ${minutes} minutes.</em>`;
+        }
+        timecounter++;
+      };
+      const timerInterval = setInterval(() => tickTimer(), 1000);
+      setTimeout(() => {
+        clearInterval(timerInterval);
+        document.getElementById(leaveButtonID).style.visibility = 'visible';
+      }, waitToCloseMS);
+    }
     document.querySelectorAll('.cb-btn').forEach(item => {
       item.addEventListener('click', e => {
+        if (messageIsList && messageIdx < messageHTML.length - 1) {
+          messageIdx++;
+          document.getElementById(messageID).innerHTML = messageHTML[messageIdx];
+          return;
+        }
         closeModal();
         onComplete();
         if (e.target.value == 'x') {
           if (exitTransaction) {
-            transact(state, dispatch, exitTransaction);
+            transact(state, dispatch, exitTransaction, photoName);
+          } else if (state.player.accruedTime) {
+            transact(state, dispatch, {}, photoName);
           }
         } else {
           const idx = parseInt(e.target.value);
-          transact(state, dispatch, filtered[idx]);
+          transact(state, dispatch, filtered[idx], photoName);
         }
       });
     });
@@ -712,23 +557,51 @@ const nextEvent = (state, dispatch) => {
   }
   const evtIdx = scheduledEvents.indexOf(scheduledEvents[0]);
   const thisEvt = scheduledEvents.shift();
-  const evt = events[thisEvt.name] || {};
-  const baseEvt = {
-    schedule: 0,
-    fillStyle: colors.GRAY,
-    type: 'event',
+  const baseEvt = events[thisEvt.name] || {};
+  const evt = {
+    ...baseEvt,
+    ...thisEvt,
   };
   evt.onComplete = () => {
     player.events.splice(evtIdx, 1);
     dispatch({ player });
   };
-  renderModal(state, dispatch, { ...baseEvt, ...evt, ...thisEvt });
+  const locationOpts = state.visitOptions[evt.location];
+  renderModal(state, dispatch, { ...locationOpts, photo: evt.location, ...evt });
+  console.log({ ...locationOpts, ...evt });
   return true;
 };
 
-const visit = (state, dispatch, location) => {
+const visit = (state, dispatch, location, waited = 0) => {
   const { visitOptions, player } = state;
   const { locationEvents } = player;
+  if (visitOptions[location.name].maxHunger) {
+    const hungerHours = getHoursDiff(player.lastMeal, player.time);
+    if (hungerHours >= visitOptions[location.name].maxHunger) {
+      return renderModal(
+        state,
+        dispatch,
+        Object.assign(
+          {},
+          location,
+          { message: 'You are too hungry to deal with this right now.' }
+        )
+      );
+    }
+  }
+  if (visitOptions[location.name].wait && !waited && time_between(player.time, visitOptions[location.name].hours)) {
+    const waitTime = maxWaitForLocation(state, location, visitOptions[location.name].wait);
+    if (waitTime > 0) {
+      // If the place closes while they are in line, that's it, none of the rest of this happens
+      return waitInLine(
+        state,
+        dispatch,
+        location,
+        waitTime,
+        () => visit(state, dispatch, location, waitTime)
+      );
+    }
+  }
   const opts = () => {
     const evt = locationEvents.find((e) => e.location == location.name);
     if (evt) {
@@ -748,6 +621,7 @@ const visit = (state, dispatch, location) => {
     return visitOptions[location.name]
   };
   opts.type = 'visit';
+  state.player.accruedTime = waited;
   renderModal(state, dispatch, Object.assign({}, location, opts()));
 };
 
@@ -776,14 +650,20 @@ const formatDate = (date) => {
 };
 
 const showBackpack = (state, dispatch) => {
-  const { player } = state;
+  const { player, itemTable } = state;
   const { items, calendar } = player;
   const backpackItems = () => {
     if (items.length == 0) {
       return '<p>Your backpack contains nothing</p>';
     }
     const itemQt = (qt) => qt > 1 ? `(${qt})` : '';
-    const itemList = items.map((item) => `<li>${item.title} ${itemQt(item.quantity)}</li>`);
+    const itemList = items.map((key) => {
+      const item = itemTable[key];
+      if (!item.hidden) {
+        return `<li>${item.title} ${itemQt(item.quantity)}</li>`;
+      }
+      return '';
+    });
     return `<p>Your backpack contains:</p>
       <ul>${itemList.join('')}</ul>`
   }
@@ -804,7 +684,8 @@ const showBackpack = (state, dispatch) => {
   });
 }
 
-const drawStatusBar = ({ player, colors }) => {
+// wrong arg order
+const drawStatusBar = ({ width }, { player, colors, itemTable }) => {
   const padding = 5;
   const barHeight = 30;
   ctx.font = 'Bold 14px Arial, sans-serif';
@@ -816,52 +697,47 @@ const drawStatusBar = ({ player, colors }) => {
   const txtHeight = dateTxtMetrics.fontBoundingBoxAscent;
   const verticalCenter = (barHeight - txtHeight) / 2 + txtHeight;
   ctx.fillText(dateTxt, padding, verticalCenter);
-  const statusTxt = `Items: ${player.items.length} | Money: $${player.money} | Health: ${player.health}`;
+  const itemCount = player.items.filter((item) => !itemTable[item].hidden).length;
+  const statusTxt = `Items: ${itemCount} | Money: $${player.money} | Health: ${player.health}`;
   const statusTxtMetrics = ctx.measureText(statusTxt);
   ctx.fillText( statusTxt, width - statusTxtMetrics.width - padding, verticalCenter);
 };
 
 const drawMapTitle = ({ colors }, title, x, y) => {
-  const textmargin = 4;
+  const textmargin = 10;
+  ctx.font = '12px Arial, sans-serif';
   const metrics = ctx.measureText(title);
-  ctx.fillStyle = colors.WHITE;
+  ctx.fillStyle = colors.BLACK;
   ctx.fillText(title, x + textmargin, y + textmargin + metrics.fontBoundingBoxAscent);
 };
 
-const _shapeInBlock = (blockWidth, blockHeight, padding) => (block) => {
-  shape = {};
-  shape.x = block.col * (blockWidth + padding);
-  shape.y = block.row * (blockHeight + padding);
-  if (block.colspan == 1) {
-    shape.width = blockWidth;
-  } else {
-    shape.width = ((blockWidth + padding) * block.colspan) - padding;
-  }
-  if (shape.rowspan == 1) {
-    shape.height = blockHeight;
-  } else {
-    shape.height = ((blockHeight + padding) * block.rowspan) - padding;
-  }
-  return shape;
-};
+const _shapeInBlock = (scalex, scaley) => (block) => ({
+  x: scalex(block.pos[0][0]),
+  y: scaley(block.pos[0][1]),
+  width: scalex(block.pos[1][0] - block.pos[0][0]),
+  height: scaley(block.pos[1][1] - block.pos[0][1]),
+});
 
-const drawMap = (state, dispatch, e) => {
+const drawMap = ({ width, height}, state, dispatch, e) => {
   if (nextEvent(state, dispatch)) {
     return;
   }
   const { maps, player, colors } = state;
   const mapObj = maps[player.map];
-  const topmargin = 35;
-  const padding = 5;
-  const rows = 4;
-  const cols = 5;
-  const blockWidth = (width / cols) - (padding * ((cols - 1) / cols));
-  const blockHeight = ((height - (topmargin)) / rows) - (padding * ((rows - 1) / rows));
-  const shapeInBlock = _shapeInBlock(blockWidth, blockHeight, padding);
-  ctx.translate(0, topmargin);
+  const topmargin = 30;
+  ctx.translate(0, 0);
+
+  const scalex = (x) => (x / IMGDIMS.WIDTH) * width;
+  const scaley = (y) => (y / IMGDIMS.HEIGHT) * height;
+  const growx = (x) => (x / width) * IMGDIMS.WIDTH;
+  const growy = (y) => (y / height) * IMGDIMS.HEIGHT;
+
+  const shapeInBlock = _shapeInBlock(scalex, scaley);
 
   const rect = canvas.getBoundingClientRect();
   ctx.font = '14px Arial, sans-serif';
+
+  ctx.drawImage(bgs[player.map], 0, 0, width, height);
 
   if (e && e.type == 'click') {
     if (e.clientY - rect.top < topmargin) {
@@ -874,7 +750,7 @@ const drawMap = (state, dispatch, e) => {
     const block = { ...defaultBlock, ...blockData };
     ctx.beginPath();
     const shape = shapeInBlock(block);
-    ctx.fillStyle = block.fillStyle;
+    ctx.fillStyle = 'transparent';
     ctx.rect(shape.x, shape.y, shape.width, shape.height);
     if (e) {
       const ex = e.clientX - rect.left,
@@ -884,11 +760,17 @@ const drawMap = (state, dispatch, e) => {
           visit(state, dispatch, block);
           return;
         }
-        ctx.beginPath(); // start over
-        // this is what we have to do to get an "inner stroke"
-        ctx.lineWidth = 2;
-        ctx.rect(shape.x + 2, shape.y + 2, shape.width - 4, shape.height - 4);
-        ctx.strokeRect(shape.x + 2, shape.y + 2, shape.width - 4, shape.height - 4);
+        ctx.drawImage(
+          bgs[player.map + '-hover'],
+          growx(shape.x),
+          growy(shape.y),
+          growx(shape.width),
+          growy(shape.height),
+          shape.x,
+          shape.y,
+          shape.width,
+          shape.height,
+        );
       }
     }
     // ctx.rect(shape.x, shape.y, shape.width, shape.height);
@@ -899,11 +781,11 @@ const drawMap = (state, dispatch, e) => {
   });
 };
 
-const draw = (state, dispatch, e) => {
+const draw = ({ width, height}, state, dispatch, e) => {
   ctx.clearRect(0, 0, width, height);
-  drawStatusBar(state, dispatch, e);
   ctx.save();
-  drawMap(state, dispatch, e);
+  drawMap({ width, height }, state, dispatch, e);
+  drawStatusBar({ width, height }, state, dispatch, e);
   ctx.restore();
 };
 
@@ -911,23 +793,25 @@ const init = () => {
   const state = {
     ...config(),
   };
+  const { width } = canvas.getBoundingClientRect();
+  const height = width * (IMGDIMS.HEIGHT / IMGDIMS.WIDTH);
+  const dims = { width, height };
   const dispatch = (change) => {
     Object.assign(state, change);
     const e = new CustomEvent('stateChange', {
       detail: { change },
     });
-    draw(Object.assign({}, state), dispatch, e);
+    draw(dims, Object.assign({}, state), dispatch, e);
   };
   // handle map hover states
-  canvas.onmousemove = (e) => draw(state, dispatch, e);
-  canvas.onmouseout = (e) => draw(state, dispatch, e);
-  canvas.onclick = (e) => draw(state, dispatch, e);
+  canvas.onmousemove = (e) => draw(dims, state, dispatch, e);
+  canvas.onmouseout = (e) => draw(dims, state, dispatch, e);
+  canvas.onclick = (e) => draw(dims, state, dispatch, e);
   // initialize the game
   ctx.scale(1, 1);
   canvas.width = width; // necessary to properly scale
-  canvas.height = (width - 3) * 0.8;
-  height = canvas.height;
-  draw(state, dispatch);
+  canvas.height = height;
+  draw(dims, state, dispatch);
 }
 
 init();
