@@ -55,6 +55,7 @@ const restart_probation = {
       ...start_probation,
       schedule: 0,
       exitTransaction: {},
+      makeMorning: true,
       messageHTML: `<p>Are you ready to try this again? The same provisions of your probation still
         apply, but unfortunately there is not a housing placement available for you, so you will need
         to arrange for your own housing. I will see you next week.</p>`,

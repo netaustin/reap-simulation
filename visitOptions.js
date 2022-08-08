@@ -419,22 +419,24 @@ export const visitOptions = {
   probation: {
     hours: govtHours,
   },
-  discountMedical: {
+  discountmedical: {
     hours: [false, [8, 20], [8, 20], [8, 20], [8, 20], [8, 20], [10, 14]],
     wait: 1,
     message: 'Our motto: "Here\'s the cup, you know what to do!"',
     options: [
       {
-        title: 'Get a urinalysis test for probation',
-        money: 25,
+        title: 'Get a urinalysis test for probation ($25)',
+        money: -25,
         failWithoutAll: ['pouareq'],
+        take: ['pouareq'],
         giveOne: { pouapass: 0.9, pouafail: 1.0, },
         time: 1,
       },
       {
-        title: 'Get a work urinalysis and physical',
-        money: 40,
+        title: 'Get a work urinalysis and physical ($40)',
+        money: -40,
         hideWithoutAll: ['jobuareq'],
+        take: ['jobuareq'],
         giveOne: { jobuapass: 0.9, jobuafail: 1.0, },
         time: 1,
       },
@@ -446,23 +448,95 @@ export const visitOptions = {
     message: 'A busy urban hospital with a walk-in clinic.',
     options: [
       {
-        title: 'Get a urinalysis test for probation',
-        money: 21,
+        title: 'Get a urinalysis test for probation ($21)',
+        money: -21,
         failWithoutAll: ['pouareq'],
+        take: ['poouareq'],
         giveOne: { pouapass: 0.7, pouafail: 1.0, },
         time: 1,
       },
       {
-        title: 'Get a urinalysis and physical for work',
-        money: 34,
+        title: 'Get a urinalysis and physical for work ($34)',
+        money: -34,
         hideWithoutAll: ['jobuareq'],
+        take: ['jobuareq'],
         giveOne: { jobuapass: 0.7, jobuafail: 1.0, },
         time: 1,
+      },
+    ],
+  },
+  counseling: {
+    hours: [false, [8, 21], [8, 21], [8, 21], [8, 21], [8, 21], false],
+    message: 'Specializing in group and 1:1 therapy. Group therapy sessions are 4-5pm Mondays, Wednesdays, and Fridays, and 7-8pm on Tuesdays and Thursdays.',
+    options: [
+      {
+        title: 'Attend group therapy',
+        hours: [false, [16, 17], [19-20], [16, 17], [19-20], [16, 17], false],
+        hideWithAny: ['groupvoucher'],
+        give: ['groupvoucher'],
       },
     ],
   },
   warehouse: {
     hours: [[5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23],],
     message: 'You don\'t work here.',
+  },
+  construction: {
+    hours: [[5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23],],
+    message: 'You don\'t work here.',
+  },
+  janitorservices: {
+    hours: [[5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23], [5, 23],],
+    message: 'You don\'t work here.',
+  },
+  police: {
+    hours: [],
+    message: 'You would rather not be here.',
+  },
+  grocery: {
+    hours: commerceHours,
+    message: 'Bright but dilapidated grocery store',
+    options: [
+      {
+        title: 'Pre-wrapped sandwich ($6)',
+        food: true,
+        health: 12,
+      },
+      {
+        title: 'Cheese stick ($2)',
+        food: true,
+        health: 3,
+      },
+    ],
+  },
+  heightschurch: {
+    message: `Welcome to Heights Baptist Church We serve a free hearty
+      meal on Wednesdays from 5-8pm, and twelve-step groups meet here weekly.`,
+    options: [
+      {
+        // actually wait?
+        title: 'Wait in line for a healthy, hearty meal',
+        hours: [false, false, false, [17, 20], false, false, false],
+        health: 15,
+        food: true,
+        time: 3,
+      },
+      {
+        title: 'Attend Narcotics Anonymous',
+        hours: [false, false, false, false, [21, 22], false, false],
+        give: ['nacard'],
+        health: 2,
+        time: 2,
+      },
+      {
+        title: 'Put something in the collection box ($5)',
+        money: -5,
+      },
+      // {
+      //   title: 'Steal the collection box',
+      //   randMoney: 50,
+      //   risk: 0.45,
+      // },
+    ]
   },
 };

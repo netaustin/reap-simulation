@@ -200,6 +200,9 @@ const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, locatio
 const maxWaitForLocation = ({ player, visitOptions }, location, waitObj) => {
   const waitTime = randomize(waitObj);
   const hours = visitOptions[location.name].hours;
+  if (!hours) {
+    return waitTime;
+  }
   const testTime = new Date(player.time);
   testTime.setHours(testTime.getHours() + waitTime);
   if (time_between(testTime, hours)) {
@@ -229,6 +232,7 @@ const playerHasAll = (player, itemNames) => {
 
 const hoursToHealth = (hours) => hours * 2;
 
+// refactor each option to a function
 const transact = (state, dispatch, rawOption, location) => {
   const { player } = state;
   const option = {
@@ -254,7 +258,7 @@ const transact = (state, dispatch, rawOption, location) => {
     playerState.events = playerState.events.map((e) => scheduleEvents(e, timeToAdvance));
     playerState.locationEvents = playerState.locationEvents.map((e) => scheduleEvents(e, timeToAdvance));
   }
-  if (option.makeMorning) {
+  if (option.makeMorning || option.makeMonday) {
     while(playerState.time.getHours() !== 9) {
       playerState.health -= hoursToHealth(1);
       playerState.time = advanceTime(playerState.time, 1);
@@ -265,7 +269,6 @@ const transact = (state, dispatch, rawOption, location) => {
     while(playerState.time.getDay() !== 1) {
       playerState.time = advanceTime(playerState.time, 1);
     }
-    option.makeMorning = true;
   }
   if (option.money) {
     if (option.money < 0 && (-1 * option.money) > playerState.money) {
@@ -318,6 +321,16 @@ const transact = (state, dispatch, rawOption, location) => {
   }
   if (option.addToCalendar) {
     playerState.calendar = [...playerState.calendar, ...option.addToCalendar];
+  }
+  if (option.giveOne) {
+    const prob = Math.random();
+    for (const item in option.giveOne) {
+      const ceil = option.giveOne[item];
+      if (ceil > prob) {
+        playerState.items.push(item);
+        break;
+      }
+    }
   }
   if (option.give) {
     playerState.items.push(...option.give);
@@ -401,7 +414,7 @@ const renderModal = (
     modal.style.display = 'none';
   };
   const messageIsList = (typeof messageHTML == 'object');
-  const isClosed = (hours && !time_between(state.player.time, hours));
+  const isClosed = (type == 'location' && hours && hours.length && !time_between(state.player.time, hours));
   const filtered = options.filter((opt) => {
     if (opt.hideWithoutAny) {
       if (!playerHasAny(state.player, opt.hideWithoutAny)) {
@@ -548,7 +561,7 @@ const renderModal = (
 }
 
 const nextEvent = (state, dispatch) => {
-  const { player, events, colors } = state;
+  const { player, events } = state;
   const scheduledEvents = player.events.filter((e) => e.schedule <= 0);
   if (scheduledEvents.length == 0) {
     return false;
@@ -559,6 +572,8 @@ const nextEvent = (state, dispatch) => {
   const evt = {
     ...baseEvt,
     ...thisEvt,
+    hours: [],
+    type: 'event',
   };
   evt.onComplete = () => {
     player.events.splice(evtIdx, 1);
@@ -566,7 +581,6 @@ const nextEvent = (state, dispatch) => {
   };
   const locationOpts = state.visitOptions[evt.location];
   renderModal(state, dispatch, { ...locationOpts, photo: evt.location, ...evt });
-  console.log({ ...locationOpts, ...evt });
   return true;
 };
 
