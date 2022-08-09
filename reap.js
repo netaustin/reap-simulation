@@ -154,12 +154,19 @@ const getHoursDiff = (start, end) =>
 
 const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
 
-const randomize = (struct) => {
-  if (typeof struct == 'number') {
-    return struct;
-  } else if (struct.random == 'uniform') {
-    return Math.floor(Math.random() * (struct.max + 1 - struct.min) ) + struct.min;
+// this should be in kind of a preprocessor...
+const randomize = (struct, readPlayer = () => {}) => {
+  if (typeof struct == 'object') {
+    if (struct.random == 'uniform') {
+      return Math.floor(Math.random() * (struct.max + 1 - struct.min) ) + struct.min;
+    } else if (struct.random == 'rotate') {
+      const player = readPlayer();
+      const key = player[struct.key] || 0;
+      const idx = (key >= struct.values.length) ? key % idx : key;
+      return struct.values[key];
+    }
   }
+  return struct;
 };
 
 const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, location, waitTime, next) => {
@@ -198,7 +205,7 @@ const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, locatio
 }
 
 const maxWaitForLocation = ({ player, visitOptions }, location, waitObj) => {
-  const waitTime = randomize(waitObj);
+  const waitTime = randomize(waitObj, () => player);
   const hours = visitOptions[location.name].hours;
   if (!hours) {
     return waitTime;
@@ -246,6 +253,8 @@ const transact = (state, dispatch, rawOption, location) => {
   };
   Object.assign(option, rawOption);
   const playerState = Object.assign({}, player);
+  const readPlayer = () => playerState;
+  const writePlayer = (key, value) => playerState[key] = value;
   if (option.time + playerState.accruedTime > 0) {
     const timeToAdvance = playerState.accruedTime + option.time;
     playerState.accruedTime = 0;
@@ -356,6 +365,9 @@ const transact = (state, dispatch, rawOption, location) => {
   }
   if (option.setHealth) {
     playerState.health = option.setHealth;
+  }
+  if (option.incrementKey) {
+    playerState[option.incrementKey]++;
   }
   dispatch({ player: playerState });
 };
@@ -481,6 +493,9 @@ const renderModal = (
     }
     if (message.length == 0 && messageHTML.length == 0) {
       return '<p>Nothing to do here.</p>';
+    }
+    if (typeof message == 'object' && message.random) {
+      return randomize(message, () => state.player);
     }
     if (messageIsList) {
       return messageHTML[messageIdx];

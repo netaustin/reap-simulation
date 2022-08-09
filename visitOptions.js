@@ -308,6 +308,23 @@ export const visitOptions = {
         title: 'Get advice from your roommate',
         hideWithoutAll: ['halfwayhousekey'],
         time: 1,
+        addEvents: [{
+          schedule: 0,
+          photo: 'halfwayhouse',
+          title: 'Free advice',
+          message: {
+            random: 'rotate', // TODO: rename random
+            key: 'hhadvice',
+            values: [
+              `Try to do whatever your PO tells you, they can make your life really hard.`,
+              `You gotta eat enough to live. Everything else can wait, unless it can't.`,
+              `Don't bother me right now.`,
+            ],
+          },
+          exitTransaction: {
+            incrementKey: 'hhadvice',
+          },
+        }],
       },
     ],
   },
