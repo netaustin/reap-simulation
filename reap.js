@@ -730,14 +730,6 @@ const drawStatusBar = ({ width }, { player, colors, itemTable }) => {
   ctx.fillText( statusTxt, width - statusTxtMetrics.width - padding, verticalCenter);
 };
 
-const drawMapTitle = ({ colors }, title, x, y) => {
-  const textmargin = 10;
-  ctx.font = '12px Arial, sans-serif';
-  const metrics = ctx.measureText(title);
-  ctx.fillStyle = colors.BLACK;
-  ctx.fillText(title, x + textmargin, y + textmargin + metrics.fontBoundingBoxAscent);
-};
-
 const _shapeInBlock = (scalex, scaley) => (block) => ({
   x: scalex(block.pos[0][0]),
   y: scaley(block.pos[0][1]),
@@ -804,7 +796,6 @@ const drawMap = ({ width, height}, state, dispatch, e) => {
     // to handle map interaction
     block.coordinates = shape;
     ctx.fill();
-    drawMapTitle(state, block.title, shape.x, shape.y);
   });
 };
 
