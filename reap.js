@@ -7,8 +7,7 @@ import { events, start_probation } from './events.js';
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-// move this to config
-
+// resource management
 const imgWithSource = (src) => {
   const im = new Image();
   im.src = src;
@@ -120,6 +119,12 @@ const config = () => {
     jobuafail: { title: 'UA results for Hiring Manager', hidden: true, },
     debitcard: { title: 'Debit Card' },
     workboots: { title: 'Work Boots' },
+    navoucher: { title: 'Attendence Slip from Narcotics Anonymous' },
+    counselingvoucher: { title: 'Counseling Voucher', },
+    careervoucher: { title: 'Career Center Voucher', },
+    careercenterdemand: { hidden: true },
+    stateiddemand: { hidden: true },
+    birthcertificatedemand: { hidden: true },
   };
 
   const startTime = new Date('January 3, 2022 09:00:00');
@@ -135,7 +140,7 @@ const config = () => {
       start_probation,
     ],
     lastMeal: startTime,
-    lastProbation: startTime,
+    nextProbation: false,
     lastStrength: startTime,
     calendar: [],
     events: [
@@ -150,7 +155,7 @@ const advanceTime = (time, hours) =>
   new Date(time.getTime() + (hours * 3600000));
 
 const getHoursDiff = (start, end) =>
-  Math.round(Math.abs(end - start) / (1000 * 60 * 60));
+  Math.round((end - start) / (1000 * 60 * 60));
 
 const pickOne = (items) => items[Math.floor(Math.random() * items.length)];
 
@@ -237,6 +242,117 @@ const playerHasAll = (player, itemNames) => {
   return true;
 };
 
+const nextProbation = (time) => {
+  let nextappt = time;
+  if (time.getDay() == 1) {
+    nextappt = advanceTime(nextappt, 24);
+  }
+  while (nextappt.getDay() !== 1) {
+    nextappt = advanceTime(nextappt, 1);
+  }
+  return advanceTime(nextappt, 10);
+}
+
+const poReview = (readPlayer, writePlayer) => {
+  const player = readPlayer();
+  const timeUntilReview = getHoursDiff(player.time, player.nextProbation);
+  const messageStack = [];
+  let violations = 0;
+  let arrest = false;
+  const ret = {
+    give: ['pouareq'],
+    take: ['pouareq', 'pouapass', 'pouafail', 'counselingvoucher', 'careervoucher', 'navoucher',],
+  }
+  if (timeUntilReview > 0) {
+    messageStack.push(pickOne([
+      `I'm flattered that you want to see me again, but I'm really quite busy.`,
+      `Were you supposed to come today? Ah, no you were not. See you soon!`,
+      `Your probation officer is not in the office. Come back at your scheduled time.`,
+    ]));
+  } else if (timeUntilReview < -24) { // 1 or more days late
+    messageStack.push(
+      `I've been looking for you. You missed an appointment, and I have to take you into custody.`);
+      arrest = true;
+  } else {
+    if (timeUntilReview < 0) { // 0-24 hours late.
+      messageStack.push(`First off, you're late. I have to give you a violation for being late.`);
+      violations++;
+    }
+    messageStack.push(
+      `We are going to review your drug test, your treatment progress, and your job search.
+      First I'll pull up your urinalysis results.`
+    );
+    // UA
+    if (player.items.indexOf('pouareq') >= 0) {
+      messageStack.push(
+        `You didn't get a UA test done? That's a probation violation. Please do not forget again.`
+      );
+      violations++;
+    } else if (player.items.indexOf('pouapass')) {
+      messageStack.push(`You passed your urinalysis. Good work staying clean`);
+    } else {
+      messageStack.push(
+        `You failed your urinalysis, which is a violation of your probation`
+      );
+      violations++;
+    }
+    // Treatment
+    if (player.items.indexOf('navoucher') >= 0) {
+      messageStack.push(
+        `Let's look at your treatment progress next. Thank you for bringing the voucher from NA.`
+      );
+    } else {
+      messageStack.push(
+        `Let's look at your treatment progress. You needed to go to NA this week, but you didn't, 
+        which is a violation of your probation.`
+      );
+      violations++;
+    }
+    if (player.items.indexOf('counselingvoucher') >= 0) {
+      messageStack.push(
+        `I see you have the form from your group therapy session, thank you.`
+      );
+    } else {
+      messageStack.push(
+        `I see you haven't been to group therapy, which is a violation of your parole.`
+      );
+      violations++;
+    }
+    // Job Search
+    if (player.items.indexOf('jobid') == -1) {
+      messageStack.push(`As a condition of your probation, you are also required to find a job.`);
+      if (player.items.indexOf('careervoucher') >= 0) {
+        messageStack.push(
+          `I see you have been to the career center this week, good luck with the job hunt.`
+        );
+      } else if (player.items.indexOf('stateid') >= 0) {
+        messageStack.push(
+          `I see you have gotten your state ID. Now you need to go to the career center and try to
+          find a job. Please do so by our next visit.`
+        );
+        ret.give('careercenterdemand');
+      } else if (player.items.indexOf('birthcertificate') >= 0) {
+        messageStack.push(
+          `I see you have your birth certificate, but you will need a state ID in order to get
+          a job. Please bring a state ID to your next visit.`
+        );
+        ret.give('stateiddemand');
+      }
+    }
+    // now tally violations, check arrest, and move on
+    
+  }
+
+  const event = {
+    title: 'Probation Review',
+    messageHTML: messageStack,
+    photo: 'probation',
+    schedule: 0,
+  }
+  writePlayer('events', [event, ...player.events]);
+  return ret;
+};
+
 const hoursToHealth = (hours) => hours * 2;
 
 // refactor each option to a function
@@ -250,6 +366,7 @@ const transact = (state, dispatch, rawOption, location) => {
     wait: false,
     give: [],
     take: [],
+    addEvents: [],
   };
   Object.assign(option, rawOption);
   const playerState = Object.assign({}, player);
@@ -306,13 +423,6 @@ const transact = (state, dispatch, rawOption, location) => {
     dispatch({ player: playerState });
     return;
   }
-  if (option.reset) { // the player's life is on a new course.
-    playerState.events = [];
-    playerState.locationEvents = [];
-    playerState.money = 0;
-    playerState.lastMeal = playerState.time;
-    option.take.push('halfwayhousekey');
-  }
   if (option.travel) {
     playerState.map = option.travel;
   }
@@ -353,13 +463,6 @@ const transact = (state, dispatch, rawOption, location) => {
       playerState.items.splice(takenIdx, 1);
     }
   }
-  // must avoid deep copy issues
-  if (option.addEvents) {
-    option.addEvents.forEach((evt) => playerState.events.push(Object.assign({}, evt)));
-  }
-  if (option.addLocationEvents) {
-    option.addLocationEvents.forEach((evt) => playerState.locationEvents.push(Object.assign({}, evt)));
-  }
   if (option.violation) {
     playerState.violations++;
   }
@@ -368,6 +471,43 @@ const transact = (state, dispatch, rawOption, location) => {
   }
   if (option.incrementKey) {
     playerState[option.incrementKey]++;
+  }
+  if (playerState.health <= 0) {
+    playerState.money = 0;
+    playerState.health = 50;
+    option.addEvents.unshift({
+      schedule: 0,
+      animate: 'medical',
+      title: 'You were found in the street',
+      message: `Weak from hunger and exhaustion, you collapsed on the street. A passerby called
+        911 and an ambulance brought you to the emergency room, where you have been discharged
+        after a modest meal and a little bit of rest.`,
+      photo: 'clinic',
+      exitTransaction: {
+        travel: 'downtown',
+      },
+    });
+  }
+  if (option.poreview) {
+    poReview(readPlayer, writePlayer);
+  }
+  if (option.nextProbation) {
+    playerState.nextProbation = nextProbation(playerState.time);
+  }
+  if (option.reset) { // the player's life is on a new course.
+    playerState.events = [];
+    playerState.locationEvents = [];
+    playerState.money = 0;
+    playerState.lastMeal = playerState.time;
+    playerState.health = 70;
+    option.take.push('halfwayhousekey');
+  }
+  // must avoid deep copy issues
+  if (option.addEvents) {
+    option.addEvents.forEach((evt) => playerState.events.push(Object.assign({}, evt)));
+  }
+  if (option.addLocationEvents) {
+    option.addLocationEvents.forEach((evt) => playerState.locationEvents.push(Object.assign({}, evt)));
   }
   dispatch({ player: playerState });
 };
@@ -418,9 +558,11 @@ const renderModal = (
     type = 'location',
     messageIdx = 0,
     canLeave = true,
+    animate = false,
   },
 ) => {
   modal.style.display = 'block';
+  modal.className = '';
   const closeModal = () => {
     modal.innerHTML = '';
     modal.style.display = 'none';
@@ -507,6 +649,7 @@ const renderModal = (
   };
   const photoName = photo ? photo : name;
   const renderLateMessage = () => (lateMessage && schedule < 0) ? `<p>${lateMessage}</p>` : '';
+  const render = () => {
     modal.innerHTML = `<div class="choice-box card">
       <div class="section" style="background-color: ${fillStyle}" >
         <h2 class="col-sm-12">${title}</h2>
@@ -573,6 +716,13 @@ const renderModal = (
         }
       });
     });
+  }
+  if (animate) {
+    modal.classList.add('animate', animate);
+    setTimeout(() => render(), 5000);
+  } else {
+    render();
+  }
 }
 
 const nextEvent = (state, dispatch) => {
@@ -678,6 +828,7 @@ const formatDate = (date) => {
 
 const showBackpack = (state, dispatch) => {
   const { player, itemTable } = state;
+  console.log(player);
   const { items, calendar } = player;
   const backpackItems = () => {
     if (items.length == 0) {
@@ -725,7 +876,7 @@ const drawStatusBar = ({ width }, { player, colors, itemTable }) => {
   const verticalCenter = (barHeight - txtHeight) / 2 + txtHeight;
   ctx.fillText(dateTxt, padding, verticalCenter);
   const itemCount = player.items.filter((item) => !itemTable[item].hidden).length;
-  const statusTxt = `Items: ${itemCount} | Money: $${player.money} | Health: ${player.health}`;
+  const statusTxt = `Items: ${itemCount} | Money: $${player.money} | Strength: ${player.health}`;
   const statusTxtMetrics = ctx.measureText(statusTxt);
   ctx.fillText( statusTxt, width - statusTxtMetrics.width - padding, verticalCenter);
 };
@@ -738,9 +889,6 @@ const _shapeInBlock = (scalex, scaley) => (block) => ({
 });
 
 const drawMap = ({ width, height}, state, dispatch, e) => {
-  if (nextEvent(state, dispatch)) {
-    return;
-  }
   const { maps, player, colors } = state;
   const mapObj = maps[player.map];
   const topmargin = 30;
@@ -757,6 +905,10 @@ const drawMap = ({ width, height}, state, dispatch, e) => {
   ctx.font = '14px Arial, sans-serif';
 
   ctx.drawImage(bgs[player.map], 0, 0, width, height);
+
+  if (nextEvent(state, dispatch)) {
+    return;
+  }
 
   if (e && e.type == 'click') {
     if (e.clientY - rect.top < topmargin) {
@@ -792,10 +944,6 @@ const drawMap = ({ width, height}, state, dispatch, e) => {
         );
       }
     }
-    // ctx.rect(shape.x, shape.y, shape.width, shape.height);
-    // to handle map interaction
-    block.coordinates = shape;
-    ctx.fill();
   });
 };
 
@@ -829,7 +977,16 @@ const init = () => {
   ctx.scale(1, 1);
   canvas.width = width; // necessary to properly scale
   canvas.height = height;
-  draw(dims, state, dispatch);
+  // wait for all resources to load before drawing
+  const resources = Object.values(bgs);
+  const loads = [];
+  const loaded = () => {
+    loads.push(1);
+    if (loads.length == resources.length) {
+      draw(dims, state, dispatch);
+    }
+  }
+  resources.forEach((im) => im.onload = loaded);
 }
 
 init();

@@ -119,7 +119,7 @@ export const visitOptions = {
       {
         title: 'Attend Narcotics Anonymous',
         hours: [false, false, [19, 20], false, false, false, false],
-        give: ['nacard'],
+        give: ['navoucher'],
         health: 2,
         time: 2,
       },
@@ -296,6 +296,7 @@ export const visitOptions = {
         title: 'Go to bed',
         hideWithoutAll: ['halfwayhousekey'],
         health: 7,
+        hours: [[17, 22], [17, 22], [17, 22], [17, 22], [17, 22], [17, 22], [17, 22]],
         makeMorning: true,
       },
       {
@@ -379,7 +380,7 @@ export const visitOptions = {
     options: [
       {
         title: 'Kill an hour',
-        health: 2,
+        health: 0,
         time: 1,
       },
       {
@@ -435,6 +436,13 @@ export const visitOptions = {
   },
   probation: {
     hours: govtHours,
+    options: [
+      {
+        title: 'Check in with your Probation Officer',
+        time: 2,
+        poreview: true,
+      }
+    ]
   },
   discountmedical: {
     hours: [false, [8, 20], [8, 20], [8, 20], [8, 20], [8, 20], [10, 14]],
@@ -489,8 +497,8 @@ export const visitOptions = {
       {
         title: 'Attend group therapy',
         hours: [false, [16, 17], [19-20], [16, 17], [19-20], [16, 17], false],
-        hideWithAny: ['groupvoucher'],
-        give: ['groupvoucher'],
+        hideWithAny: ['counselingvoucher'],
+        give: ['counselingvoucher'],
       },
     ],
   },
@@ -541,7 +549,7 @@ export const visitOptions = {
       {
         title: 'Attend Narcotics Anonymous',
         hours: [false, false, false, false, [21, 22], false, false],
-        give: ['nacard'],
+        give: ['navoucher'],
         health: 2,
         time: 2,
       },

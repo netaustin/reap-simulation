@@ -11,11 +11,12 @@ const jailed = {
   },
 };
 
+// probably move this to poReview
 export const start_probation = {
   location: 'probation',
   schedule: 1,
   late: -1,
-  time: 1,
+  time: 2,
   lateMessage: 'You\'re late. I\'m sorry, but I have to give you a violation.',
   messageHTML: [
     `<p>I'm your probation officer. We will meet at least once each week
@@ -34,6 +35,7 @@ export const start_probation = {
       <p>Go directly to the halfway house and settle in, and I will see you next week.</p>`,
   ],
   exitTransaction: {
+    nextProbation: true,
     addToCalendar: [
       { name: 'na1', title: '7pm Tuesday: Narcotics anonymous at St. Jude\'s Church', },
       { name: 'na2', title: '9pm Tuesday: Narcotics anonymous at Heights Church', },
@@ -127,7 +129,7 @@ export const events = {
       probation. You have $100 you saved from your prison job, and your
       social security card. You received a G.E.D. while in prison. The prison
       staff put you on a bus to Central City, and here you are.`,
-    location: 'jail',
+    photo: 'jail',
     closeButtonText: 'Next',
   },
   meetpo: {
@@ -135,7 +137,8 @@ export const events = {
     message: `You have to check in with your probation officer at 11am. The
       probabation office in in Uptown Heights, so you'll need to figure out
       how to get there quickly.`,
-    location: 'probation',
+    photo: 'probation',
+    type: 'event',
     closeButtonText: 'Get Started',
   },
   arrest: {

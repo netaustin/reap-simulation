@@ -18,6 +18,12 @@
             #modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-color: #000000aa; }
             #modal div.choice-box { background-color: #fff; max-width: 750px; margin: 29px auto; padding-bottom: 20px; }
             #modal .container, #modal h2 { margin: 5px; }
+            @keyframes fadebg { 
+                0% { opacity: 0; }
+                100% { opacity: 1; }
+            }
+            #modal.animate { animation: fadebg 5s; }
+            #modal.medical { background-color: red; }
         </style>
     </head>
     <body>
