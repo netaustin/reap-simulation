@@ -608,7 +608,7 @@ const transact = (state, dispatch, rawOption, location) => {
     playerState.nextProbation = nextProbation(playerState.time);
   }
   if (option.reset) { // the player's life is on a new course.
-    playerState.events = [];
+    // playerState.events = [];
     playerState.money = 0;
     playerState.lastMeal = playerState.time;
     playerState.health = 70;
@@ -1014,7 +1014,7 @@ const showBackpack = (state, dispatch) => {
       <ul class="bp">${htmlList.map((item) => `<li>${item}</li>`).join('')}</ul>
       <h4>Simulation Statistics</h4>
       <ul class="bp">${stats.map((stat) => `<li>${stat}</li>`).join('')}</ul>
-      <button value="x" class="cb-btn small" onclick="clipshare()">Close backpack</button>
+      <button value="x" class="cb-btn small">Close backpack</button>
       <button id="clip-share" class="small" onclick="clipshare()">📋 Copy results to clipboard</button>
       <span id="clip-share-result"></span>`;
   }
