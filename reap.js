@@ -30,6 +30,7 @@ const config = () => {
     WHITE: '#ffffff',
     BLACK: '#232323',
     GRAY: '#dddddd',
+    GRAYER: '#aaaaaa',
     PINK: '#ba8f95',     // used by non-profits
     YELLOW: '#ffbe0b',   // used by governments
     GREEN: '#4daa57',    // used by parks
@@ -616,13 +617,14 @@ const transact = (state, dispatch, rawOption, location) => {
   if (option.message || option.messageHTML) {
     option.addEvents.unshift({
       schedule: 0,
+      type: 'event',
       title: locationTitle(location),
       message: option.message,
       messageHTML: option.messageHTML,
       photo: location,
       animate: option.animate,
       closeButtonText: option.closeButtonText ? 'Okay' : option.closeButtonText,
-      exitTransaction: option.messageExitTransaction,
+      exitTransaction: option.messageExitTransaction ? option.messageExitTransaction : {},
     });
   }
   // must avoid deep copy issues
@@ -836,6 +838,8 @@ const renderModal = (
             transact(state, dispatch, exitTransaction, photoName);
           } else if (state.player.accruedTime) {
             transact(state, dispatch, {}, photoName);
+          } else {
+            dispatch({});
           }
         } else {
           const idx = parseInt(e.target.value);
@@ -853,26 +857,23 @@ const renderModal = (
 }
 
 const nextEvent = (state, dispatch) => {
-  const { player, events } = state;
-  const scheduledEvents = player.events.filter((e) => e.schedule <= 0);
+  const newState = {...state};
+  const scheduledEvents = state.player.events.filter((e) => e.schedule <= 0);
   if (scheduledEvents.length == 0) {
     return false;
   }
-  const evtIdx = scheduledEvents.indexOf(scheduledEvents[0]);
+  const evtIdx = state.player.events.indexOf(scheduledEvents[0]);
   const thisEvt = scheduledEvents.shift();
-  const baseEvt = events[thisEvt.name] || {};
+  const baseEvt = state.events[thisEvt.name] || {};
   const evt = {
     ...baseEvt,
     ...thisEvt,
     hours: [],
     type: 'event',
   };
-  evt.onComplete = () => {
-    player.events.splice(evtIdx, 1);
-    dispatch({ player });
-  };
+  newState.player.events.splice(evtIdx, 1);
   const locationOpts = state.visitOptions[evt.location];
-  renderModal(state, dispatch, { ...locationOpts, photo: evt.location, ...evt });
+  renderModal(newState, dispatch, { ...locationOpts, photo: evt.location, ...evt });
   return true;
 };
 
@@ -918,7 +919,7 @@ const visit = (state, dispatch, location, waited = 0) => {
   const opts = () => {
     const evt = locationEvents.find((e) => e.location == location.name);
     if (evt) {
-      if (evt.schedule && evt.schedule < 0) {
+      if (evt.schedule !== undefined && evt.schedule <= 0) {
         evt.onComplete = () => {
           const evtIdx = locationEvents.indexOf(evt);
           player.locationEvents.splice(evtIdx, 1);
@@ -1010,9 +1011,9 @@ const showBackpack = (state, dispatch) => {
     }
     return `
       <h4>Backpack Contents</h4>
-      <ul>${htmlList.map((item) => `<li>${item}</li>`).join('')}</ul>
+      <ul class="bp">${htmlList.map((item) => `<li>${item}</li>`).join('')}</ul>
       <h4>Simulation Statistics</h4>
-      <ul>${stats.map((stat) => `<li>${stat}</li>`).join('')}</ul>
+      <ul class="bp">${stats.map((stat) => `<li>${stat}</li>`).join('')}</ul>
       <button value="x" class="cb-btn small" onclick="clipshare()">Close backpack</button>
       <button id="clip-share" class="small" onclick="clipshare()">📋 Copy results to clipboard</button>
       <span id="clip-share-result"></span>`;
@@ -1036,24 +1037,41 @@ const showBackpack = (state, dispatch) => {
 }
 
 // wrong arg order
-const drawStatusBar = ({ width }, { player, colors, itemTable }) => {
+const drawStatusBar = ({ width }, { player, colors, itemTable }, hover = false) => {
   const padding = 5;
   const barHeight = 30;
   ctx.font = 'Bold 14px Arial, sans-serif';
-  if (player.health <= 30) {
+  if (hover) {
+    ctx.fillStyle = colors.GRAYER;
+  } else if (player.health <= 30) {
     ctx.fillStyle = colors.RED;
   } else {
     ctx.fillStyle = colors.GRAY;
   }
   ctx.fillRect(0, 0, width, barHeight);
   ctx.fillStyle = colors.BLACK;
-  const dateTxt = formatDate(player.time);
+  const dateTxt = hover ? 'Open backpack' : formatDate(player.time);
   const dateTxtMetrics = ctx.measureText(dateTxt);
   const txtHeight = dateTxtMetrics.fontBoundingBoxAscent;
   const verticalCenter = (barHeight - txtHeight) / 2 + txtHeight;
   ctx.fillText(dateTxt, padding, verticalCenter);
   const itemCount = player.items.filter((item) => !itemTable[item].hidden).length;
-  const statusTxt = `🎒 Items: ${itemCount} | 💰 Money: $${player.money} | 💪 Strength: ${player.health}`;
+  const strengthicon = () => {
+    if (player.health > 80) {
+      return '😄';
+    }
+    if (player.health > 50) {
+      return '🙂';
+    }
+    if (player.health > 30) {
+      return '😔';
+    }
+    if (player.health > 15) {
+      return '😣';  
+    }
+    return '😫';
+  }
+  const statusTxt = `🎒 Items: ${itemCount} | 💰 Money: $${player.money} | ${strengthicon()} Strength: ${player.health}`;
   const statusTxtMetrics = ctx.measureText(statusTxt);
   ctx.fillText( statusTxt, width - statusTxtMetrics.width - padding, verticalCenter);
 };
@@ -1065,11 +1083,13 @@ const _shapeInBlock = (scalex, scaley) => (block) => ({
   height: scaley(block.pos[1][1] - block.pos[0][1]),
 });
 
-const drawMap = ({ width, height}, state, dispatch, e) => {
-  const { maps, player, colors } = state;
+const drawMap = ({ width, height }, state, dispatch, e) => {
+  const { maps, player, colors, itemTable } = state;
   const mapObj = maps[player.map];
   const topmargin = 30;
+
   ctx.translate(0, 0);
+  canvas.style.cursor = 'default';
 
   const scalex = (x) => (x / IMGDIMS.WIDTH) * width;
   const scaley = (y) => (y / IMGDIMS.HEIGHT) * height;
@@ -1083,14 +1103,17 @@ const drawMap = ({ width, height}, state, dispatch, e) => {
 
   ctx.drawImage(bgs[player.map], 0, 0, width, height);
 
-  if (nextEvent(state, dispatch)) {
-    return;
-  }
-
   if (e && e.type == 'click') {
     if (e.clientY - rect.top < topmargin) {
       return showBackpack(state, dispatch);
     }
+  }
+
+  if (e && e.clientY - rect.top < topmargin) {
+    drawStatusBar({ width }, { player, colors, itemTable }, true);
+    canvas.style.cursor = 'pointer';
+  } else {
+    drawStatusBar({ width }, { player, colors, itemTable });
   }
 
   mapObj.forEach((blockData) => {
@@ -1104,6 +1127,7 @@ const drawMap = ({ width, height}, state, dispatch, e) => {
       const ex = e.clientX - rect.left,
         ey = e.clientY - rect.top;
       if (ctx.isPointInPath(ex, ey)) {
+        canvas.style.cursor = 'pointer';
         if (e.type == 'click') {
           visit(state, dispatch, block);
           return;
@@ -1128,7 +1152,6 @@ const draw = ({ width, height}, state, dispatch, e) => {
   ctx.clearRect(0, 0, width, height);
   ctx.save();
   drawMap({ width, height }, state, dispatch, e);
-  drawStatusBar({ width, height }, state, dispatch, e);
   ctx.restore();
 };
 
@@ -1152,6 +1175,9 @@ const init = () => {
       detail: { change },
     });
     draw(dims, Object.assign({}, state), dispatch, e);
+    if (nextEvent(state, dispatch)) {
+      return;
+    }
   };
   // handle map hover states
   canvas.onmousemove = (e) => draw(dims, state, dispatch, e);
@@ -1168,6 +1194,7 @@ const init = () => {
     loads.push(1);
     if (loads.length == resources.length) {
       draw(dims, state, dispatch);
+      dispatch({});
     }
   }
   resources.forEach((im) => im.onload = loaded);

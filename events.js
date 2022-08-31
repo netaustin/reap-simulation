@@ -32,7 +32,7 @@ export const start_probation = {
         <li>You may not use drugs or alcohol, and you must complete a Urinalysis (UA) test each week.</li>
         <li>Within your first month, you must pay $200 in restitution at the Courthouse.</li>
         <li>You must also do 24 hours of community service this month. You can check in for community service on weekdays at 9am.</li>
-        <li>Here's a schedule to put in your backpack (click on "items", top right).</li>
+        <li>Refer to the weekly schedule in your orientation materials.</li>
       </ul>
       <p>Go directly to the halfway house and settle in, and I will see you next week.</p>`,
   ],

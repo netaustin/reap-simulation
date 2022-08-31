@@ -468,7 +468,7 @@ export const visitOptions = {
     options: [
       {
         title: 'Spend a quiet hour here',
-        health: 2,
+        health: 1,
         time: 1,
       },
       {
