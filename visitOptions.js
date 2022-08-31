@@ -297,15 +297,13 @@ export const visitOptions = {
             location: 'chancesbar',
             title: 'Try to make some money',
             message: `You recognize someone from your distant past. He asks if you want
-              to make $80 running an errand. You know the risks.`,
+              to make $100 running an errand. You know the risks.`,
             options: [
               {
-                title: 'Do the job',
-                risk: 0.4,
-                money: 80,
-                animate: 'justice',
+                title: 'Sure',
+                give: ['bagofdrugs'],
                 time: 3,
-                message: 'You earned $80.'
+                message: 'Take this package to the crew at the playground.'
               }
             ],
             closeButtonText: 'No thanks',
@@ -601,6 +599,17 @@ export const visitOptions = {
   },
   playground: {
     message: `You're not sure you should be here.`,
+    options: [
+      {
+        hideWithoutAll: ['bagofdrugs'],
+        take: ['bagofdrugs'],
+        title: 'Hand over the package',
+        money: 60,
+        risk: 0.4,
+        animate: 'justice',
+        message: `You made less money than you were promised and you feel a little sick.`,
+      }
+    ]
   },
   heightshousing: {
     message: `You don't live here.`,

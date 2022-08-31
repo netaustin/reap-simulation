@@ -134,6 +134,7 @@ const config = () => {
     jobid: { title: 'Job ID and Timecard', icon: '🆔' },
     joborientationinvite: { title: 'Job Orientation Invitation', icon: '🔖',  },
     paycheck: { title: 'A paper paycheck in the amount of $168', icon: '💵', },
+    bagofdrugs: { title: 'A risky little package to deliver to the playground', icon: '💀' },
   };
 
   const startTime = new Date('January 3, 2022 09:00:00');
@@ -1043,8 +1044,6 @@ const drawStatusBar = ({ width }, { player, colors, itemTable }, hover = false) 
   ctx.font = 'Bold 14px Arial, sans-serif';
   if (hover) {
     ctx.fillStyle = colors.GRAYER;
-  } else if (player.health <= 30) {
-    ctx.fillStyle = colors.RED;
   } else {
     ctx.fillStyle = colors.GRAY;
   }
@@ -1174,10 +1173,10 @@ const init = () => {
     const e = new CustomEvent('stateChange', {
       detail: { change },
     });
-    draw(dims, Object.assign({}, state), dispatch, e);
     if (nextEvent(state, dispatch)) {
       return;
     }
+    draw(dims, Object.assign({}, state), dispatch, e);
   };
   // handle map hover states
   canvas.onmousemove = (e) => draw(dims, state, dispatch, e);
