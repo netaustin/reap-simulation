@@ -202,9 +202,9 @@ export const visitOptions = {
     message: 'A once-great vertical shopping mall.',
     options: [
       {
-        title: 'Buy work boots ($50)',
-        message: `Congratulations, you are out $50 before you worked a single shift.`,
-        money: -50,
+        title: 'Buy work boots ($90)',
+        message: `Congratulations, you are out $90 before you worked a single shift.`,
+        money: -90,
         time: 1,
         give: ['workboots'],
       },
