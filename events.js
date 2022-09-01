@@ -154,7 +154,7 @@ export const events = {
   meetpo: {
     title: 'Meet your Parole Officer',
     message: `You have to check in with your parole officer at 11am. The
-      probabation office is in Uptown Heights, so you'll need to figure out
+      parole office is in Uptown Heights, so you'll need to figure out
       how to get there quickly.`,
     photo: 'probation',
     type: 'event',

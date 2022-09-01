@@ -114,9 +114,9 @@ const config = () => {
     plasmacard: { title: 'Plasma Donation Record', icon: '🆎', },
     halfwayhouseinvite: { hidden: true, icon: '🔖' },
     halfwayhousekey: { title: 'Halfway House Key', icon: '🔑' },
-    pouareq: { title: 'UA form from Probation Officer', icon: '📄' },
-    pouapass: { title: 'UA results for Probation Officer', hidden: true },
-    pouafail: { title: 'UA results for Probation Officer', hidden: true, },
+    pouareq: { title: 'UA form from Parole Officer', icon: '📄' },
+    pouapass: { title: 'UA results for Parole Officer', hidden: true },
+    pouafail: { title: 'UA results for Parole Officer', hidden: true, },
     jobuareq: { title: 'UA form from Hiring Manager', icon: '📄' },
     jobuapass: { title: 'UA results for Hiring Manager', hidden: true, },
     jobuafail: { title: 'UA results for Hiring Manager', hidden: true, },
@@ -294,7 +294,7 @@ const poReview = (readPlayer, writePlayer) => {
     messageStack.push(pickOne([
       `I'm flattered that you want to see me again, but I'm really quite busy.`,
       `Were you supposed to come today? Ah, no you were not. See you soon!`,
-      `Your probation officer is not in the office. Come back at your scheduled time.`,
+      `Your parole officer is not in the office. Come back at your scheduled time.`,
     ]));
     const poEvents = [{
       title: 'Appointment with your Parole Officer',
