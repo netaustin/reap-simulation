@@ -1,10 +1,14 @@
-import { visitOptions } from './visitOptions.js';
-import { events, start_probation } from './events.js';
-import { debugStates } from './debugStates.js';
+import places from './src/places.js';
+import itemTable from './src/items.js';
+import { events, start_probation } from './src/events.js';
+import { debugStates } from './src/debugStates.js';
+import colors from './src/colors.js';
+import maps from './src/maps.js';
+import startingStates from './src/startingStates.js';
 
 (() => {
 
-// kill these
+// kill the heinous globals
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -16,6 +20,7 @@ const imgWithSource = (src) => {
 };
 
 const IMGDIMS = { WIDTH: 1624, HEIGHT: 1157 };
+const DELAYS = 1; // set to 0 to skip delays in development
 
 const bgs = {
   'heights': imgWithSource('maps/heights.png'),
@@ -25,22 +30,6 @@ const bgs = {
 };
 
 const config = () => {
-
-  const colors = {
-    WHITE: '#ffffff',
-    BLACK: '#232323',
-    GRAY: '#dddddd',
-    GRAYER: '#aaaaaa',
-    PINK: '#ba8f95',     // used by non-profits
-    YELLOW: '#ffbe0b',   // used by governments
-    GREEN: '#4daa57',    // used by parks
-    RED: '#fc440f',      // used by healthcare
-    BLUE: '#01baef',     // used by transit
-    DARKBLUE: '#4169e1', // used by housing
-    PURPLE: '#8e7dbe',   // used by commerce
-    BROWN: '#826754',    // used by workplaces
-    MAP: '#eeeadf',      // used by the map background
-  };
 
   const waitingMessages = {
     lines: [
@@ -57,113 +46,9 @@ const config = () => {
     ],
   };
 
-  const maps = {
-    downtown: [
-      // top row
-      { pos: [[145, 100], [385, 345]], name: 'jail', fillStyle: colors.YELLOW, title: 'City Jail', },
-      { pos: [[420, 100], [675, 345]], name: 'courthouse', fillStyle: colors.YELLOW, title: 'Courthouse', },
-      { pos: [[695, 100], [950, 345]], name: 'countyclerk', fillStyle: colors.YELLOW, title: 'County Clerk', },
-      { pos: [[975, 100], [1235, 345]], name: 'church', fillStyle: colors.PINK, title: 'St. Jude\'s Church', },
-      { pos: [[1235, 100], [1495, 345]], name: 'shelter', fillStyle: colors.DARKBLUE, title: 'Homeless Shelter', },
-      // second row
-      { pos: [[145, 360], [385, 600]], name: 'dmv', fillStyle: colors.YELLOW, title: 'DMV', },
-      { pos: [[420, 360], [950, 855]], name: 'park', title: 'Buchanan Square Park', fillStyle: colors.GREEN, },
-      { pos: [[975, 360], [1495, 600]], name: 'clinic', fillStyle: colors.RED, title: 'Medical Center', },
-      // third row
-      { pos: [[145, 625], [385, 855]], name: 'bank', fillStyle: colors.PURPLE, title: 'First City Bank', },
-      { pos: [[975, 615], [1225, 855]], name: 'shoppingcenter', fillStyle: colors.PURPLE, title: 'Shopping Center', },
-      { pos: [[1235, 615], [1495, 1115]], name: 'warehouse', title: 'Savealot Warehouse', fillStyle: colors.BROWN, },
-      // fourth row
-      { pos: [[145, 870], [385, 1115]], name: 'employment', title: 'Career Center', fillStyle: colors.PINK, },
-      { pos: [[420, 870], [675, 1115]], name: 'downtownstation', fillStyle: colors.BLUE, title: 'Metro Station', },
-      { pos: [[695, 870], [950, 1115]], name: 'pronto', fillStyle: colors.PURPLE, title: 'Joe\'s Cafe', },
-      { pos: [[975, 870], [1235, 1115]], name: 'plasma', fillStyle: colors.RED, title: 'Plasma Bank', },
-    ],
-    heights: [
-      { pos: [[145, 100], [405, 345]], name: 'chancesbar', title: 'Chance\'s Bar', fillStyle: colors.PURPLE, },
-      { pos: [[420, 100], [680, 600]], name: 'construction', title: 'Acme Construction.', fillStyle: colors.BROWN, },
-      { pos: [[685, 100], [960, 345]], name: 'halfwayhouse', title: 'Halfway Home', fillStyle: colors.DARKBLUE, },
-      { pos: [[960, 100], [1223, 345]], name: 'playground', title: 'Playground', fillStyle: colors.GREEN, },
-      { pos: [[1237, 100], [1493, 345]], name: 'police', title: 'Police Precinct', fillStyle: colors.YELLOW, },
-    
-      { pos: [[145, 355], [405, 600]], name: 'diner', title: 'Jane\'s Diner', fillStyle: colors.PURPLE, },
-      { pos: [[685, 355], [1223, 600]], name: 'heightshousing', title: 'Heights Public Housing', fillStyle: colors.DARKBLUE, },
-      { pos: [[1237, 355], [1493, 600]], title: 'Shop \'n Stuff Grocery', name: 'grocery', fillStyle: colors.PURPLE, },
-    
-      { pos: [[145, 622], [405, 856]], name: 'discountmedical', title: 'Discount Medical', fillStyle: colors.RED, },
-      { pos: [[420, 622], [952, 856]], name: 'heightspark', title: 'Heights Park', fillStyle: colors.GREEN, },
-      { pos: [[960, 622], [1223, 856]], name: 'pawnshop', title: 'Rick\'s Pawn Shop', fillStyle: colors.PURPLE, },
-      { pos: [[1237, 622], [1493, 856]], name: 'janitorservices', fillStyle: colors.BROWN, title: 'Janitor Services', },
-    
-      { pos: [[1, 872], [405, 1116]], name: 'heightschurch', fillStyle: colors.PINK, title: 'Heights Baptist Church', },
-      { pos: [[420, 872], [685, 1116]], name: 'heightsstation', fillStyle: colors.BLUE, title: 'Metro Station', },
-      { pos: [[685, 872], [952, 1116]], name: 'probation', fillStyle: colors.YELLOW, title: 'Probation Office', },
-      { pos: [[960, 872], [1223, 1116]], name: 'counseling', fillStyle: colors.PINK, title: 'Counseling Center', },
-      { pos: [[1237, 872], [1493, 1116]], name: 'communitycollege', fillStyle: colors.PINK, title: 'Community College', },
-    ],
-  };
-
-  const itemTable = {
-    watch: { title: 'Your grandfather\'s gold watch', max: 1, icon: '⏱' },
-    ssn: { title: 'Social Security Card', max: 1, icon: '🆔', },
-    restitutionreceipt: { title: 'Restitution Receipt', icon: '🔖' },
-    birthcertificatereceipt: { title: 'Birth Certificate Order Receipt', icon: '🔖', },
-    birthcertificate: { title: 'Birth Certificate', max: 1, icon: '📜', },
-    fishinglicense: { title: 'Fishing License', max: 1, icon: '🐟' },
-    stateid: { title: 'State ID Card', icon: '🆔' },
-    plasmacard: { title: 'Plasma Donation Record', icon: '🆎', },
-    halfwayhouseinvite: { hidden: true, icon: '🔖' },
-    halfwayhousekey: { title: 'Halfway House Key', icon: '🔑' },
-    pouareq: { title: 'UA form from Parole Officer', icon: '📄' },
-    pouapass: { title: 'UA results for Parole Officer', hidden: true },
-    pouafail: { title: 'UA results for Parole Officer', hidden: true, },
-    jobuareq: { title: 'UA form from Hiring Manager', icon: '📄' },
-    jobuapass: { title: 'UA results for Hiring Manager', hidden: true, },
-    jobuafail: { title: 'UA results for Hiring Manager', hidden: true, },
-    debitcard: { title: 'Debit Card', icon: '💳', },
-    workboots: { title: 'Work Boots', icon:  '👞', },
-    navoucher: { title: 'Attendence Slip from Narcotics Anonymous', icon: '📄', },
-    counselingvoucher: { title: 'Counseling Voucher', icon: '📄' },
-    careervoucher: { title: 'Career Center Voucher', icon: '📄' },
-    careercenterdemand: { hidden: true },
-    stateiddemand: { hidden: true },
-    birthcertificatedemand: { hidden: true },
-    ramen: { title: 'Ramen Noodles', icon: '🍜', },
-    warehouseapplication: { title: 'Blank Warehouse Application', icon: '📄' },
-    completedwarehouseapplication: { title: 'Completed Warehouse Application', icon: '📄' },
-    jobid: { title: 'Job ID and Timecard', icon: '🆔' },
-    joborientationinvite: { title: 'Job Orientation Invitation', icon: '🔖',  },
-    paycheck: { title: 'A paper paycheck in the amount of $168', icon: '💵', },
-    bagofdrugs: { title: 'A risky little package to deliver to the playground', icon: '💀' },
-  };
-
-  const startTime = new Date('January 3, 2022 09:00:00');
-  const player = {
-    money: 50,
-    health: 80,
-    map: 'downtown',
-    home: 'halfwayhouse',
-    time: startTime,
-    violations: 0,
-    playedHours: 0,
-    items: ['watch', 'ssn', 'halfwayhouseinvite'],
-    locationEvents: [
-      start_probation,
-    ],
-    accruedPay: 0,
-    paychecksReady: 0,
-    lastMeal: startTime,
-    nextProbation: startTime,
-    lastStrength: startTime,
-    communityservice: 0,
-    calendar: [],
-    arrests: 0,
-    hospitalvisits: 0,
-    events: [
-      { name: 'outofprison', schedule: 0 },
-      { name: 'meetpo', schedule: 0 },
-    ],
-  };
+  // randomize 1 or zero
+  const scenario = Math.floor(Math.random() * 2); // put this in a cookie
+  const player = startingStates[scenario]; // randomize, put in storage
 
   // refactor how locations are stored, for the love of god.
   const locationTitle = (location) => [...maps.downtown, ...maps.heights]
@@ -171,7 +56,7 @@ const config = () => {
     .pop()
     .title;
 
-  return { colors, maps, visitOptions, events, player, waitingMessages, itemTable, locationTitle };
+  return { colors, maps, places, events, player, waitingMessages, itemTable, locationTitle };
 };
 
 const advanceTime = (time, hours) =>
@@ -197,17 +82,17 @@ const randomize = (struct, readPlayer = () => {}) => {
   return struct;
 };
 
-const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, location, waitTime, next) => {
+const waitInLine = ({ waitingMessages, player, places }, dispatch, location, waitTime, next) => {
   // will the store close while we're in line?
   const dow = player.time.getDay();
-  const hours = visitOptions[location.name].hours;
+  const hours = places[location.name].hours;
   const isClosing = (player.time.getHours() + waitTime >= hours[dow][1]);
   const kickedOut = () => renderModal(
     { player }, 
     dispatch,
     {
       ...location,
-      ...visitOptions[location.name],
+      ...places[location.name],
       title: 'Oh no!',
       message: `${location.title} closed while you were waiting in line! You will have to return some other day.`,
       closeButtonText: `Leave ${location.title}`,
@@ -220,7 +105,7 @@ const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, locatio
     dispatch,
     {
       ...location,
-      ...visitOptions[location.name],
+      ...places[location.name],
       title: `Waiting in line at ${location.title}`,
       message: pickOne(waitingMessages.lines[waitTime]),
       closeButtonText: 'It\'s your turn!',
@@ -232,9 +117,9 @@ const waitInLine = ({ waitingMessages, player, visitOptions }, dispatch, locatio
   );
 }
 
-const maxWaitForLocation = ({ player, visitOptions }, location, waitObj) => {
+const maxWaitForLocation = ({ player, places }, location, waitObj) => {
   const waitTime = randomize(waitObj, () => player);
-  const hours = visitOptions[location.name].hours;
+  const hours = places[location.name].hours;
   if (!hours) {
     return waitTime;
   }
@@ -248,6 +133,7 @@ const maxWaitForLocation = ({ player, visitOptions }, location, waitObj) => {
 }
 
 const playerHasItem = (player, itemName) => player.items.find((item) => item == itemName);
+
 const playerHasAny = (player, itemNames) => {
   for (const i in itemNames) {
     if (playerHasItem(player, itemNames[i])) {
@@ -663,6 +549,13 @@ const openHours = (days) => {
   return `<p><small><em>${fullsked}</em></small></p>`
 }
 
+const maybeCallable = (maybeFunction, state) => {
+  if (typeof maybeFunction == 'function') {
+    return maybeFunction(state);
+  }
+  return maybeFunction;
+}
+
 const renderModal = (
   state,
   dispatch,
@@ -765,10 +658,10 @@ const renderModal = (
       return randomize(message, () => state.player);
     }
     if (messageIsList) {
-      return messageHTML[messageIdx];
+      return maybeCallable(messageHTML[messageIdx], state);
     }
     if (messageHTML.length) {
-      return messageHTML;
+      return maybeCallable(messageHTML, state);
     }
     return `<p>${message}</p>`;
   };
@@ -829,7 +722,8 @@ const renderModal = (
       item.addEventListener('click', e => {
         if (messageIsList && messageIdx < messageHTML.length - 1) {
           messageIdx++;
-          document.getElementById(messageID).innerHTML = messageHTML[messageIdx];
+          // refactor this, it's duplicative
+          document.getElementById(messageID).innerHTML = maybeCallable(messageHTML[messageIdx], state);
           return;
         }
         closeModal();
@@ -866,20 +760,22 @@ const nextEvent = (state, dispatch) => {
   const evtIdx = state.player.events.indexOf(scheduledEvents[0]);
   const thisEvt = scheduledEvents.shift();
   const baseEvt = state.events[thisEvt.name] || {};
+  const playerEvent = state.player.playerEvents[thisEvt.name] || {};
   const evt = {
     ...baseEvt,
     ...thisEvt,
+    ...playerEvent,
     hours: [],
     type: 'event',
   };
   newState.player.events.splice(evtIdx, 1);
-  const locationOpts = state.visitOptions[evt.location];
+  const locationOpts = state.places[evt.location];
   renderModal(newState, dispatch, { ...locationOpts, photo: evt.location, ...evt });
   return true;
 };
 
 const visit = (state, dispatch, location, waited = 0) => {
-  const { visitOptions, player } = state;
+  const { places, player } = state;
   const { locationEvents } = player;
 
   if (playerHasWarrant(player) && randomize({ random: 'uniform', min: 0, max: 8}) == 1) {
@@ -890,9 +786,9 @@ const visit = (state, dispatch, location, waited = 0) => {
     );
   }
 
-  if (visitOptions[location.name].maxHunger) {
+  if (places[location.name].maxHunger) {
     const hungerHours = getHoursDiff(player.lastMeal, player.time);
-    if (hungerHours >= visitOptions[location.name].maxHunger) {
+    if (hungerHours >= places[location.name].maxHunger) {
       return renderModal(
         state,
         dispatch,
@@ -904,8 +800,8 @@ const visit = (state, dispatch, location, waited = 0) => {
       );
     }
   }
-  if (visitOptions[location.name].wait && !waited && time_between(player.time, visitOptions[location.name].hours)) {
-    const waitTime = maxWaitForLocation(state, location, visitOptions[location.name].wait);
+  if (places[location.name].wait && !waited && time_between(player.time, places[location.name].hours)) {
+    const waitTime = maxWaitForLocation(state, location, places[location.name].wait);
     if (waitTime > 0) {
       // If the place closes while they are in line, that's it, none of the rest of this happens
       return waitInLine(
@@ -930,7 +826,7 @@ const visit = (state, dispatch, location, waited = 0) => {
         return evt;
       }
     }
-    return visitOptions[location.name]
+    return places[location.name]
   };
   opts.type = 'visit';
   state.player.accruedTime = waited;
@@ -999,6 +895,7 @@ const showBackpack = (state, dispatch) => {
       `🗓 Days played: ${Math.floor(player.playedHours / 24)}`,
       `🚓 Arrests: ${player.arrests}`,
       `🚑 Hospital visits: ${player.hospitalvisits}`,
+      `You are playing scenario ${player.scenario}`
     ];
     window.clipshare = () => {
       try {
