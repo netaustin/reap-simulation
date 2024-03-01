@@ -907,12 +907,18 @@ const showBackpack = (state, dispatch) => {
         document.getElementById('clip-share-result').innerHTML = ' Cannot copy, select text manually';
       }
     }
+    window.endgame = () => {
+      if (window.confirm("Do you really want to end the simulation?")) {
+        window.location.replace("end.html");
+      }
+    };
     return `
       <h4>Backpack Contents</h4>
       <ul class="bp">${htmlList.map((item) => `<li>${item}</li>`).join('')}</ul>
       <h4>Simulation Statistics</h4>
       <ul class="bp">${stats.map((stat) => `<li>${stat}</li>`).join('')}</ul>
       <button value="x" class="cb-btn small">Close backpack</button>
+      <button class="small" onclick="endgame()">End game</button>
       <button id="clip-share" class="small" onclick="clipshare()">📋 Copy results to clipboard</button>
       <span id="clip-share-result"></span>`;
   }

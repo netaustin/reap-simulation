@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- Bootstrap CSS -->
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css"> -->
+        <link rel="stylesheet" href="mini.min.css">
+        <title>Reentry Simulation</title>
+        <style>
+            [v-cloak] > * { display:none }
+            [v-cloak]::before { content: "Loading game data" }
+            canvas { width: 100%; margin-top: 10px; }
+            body { background-color: #fff; }
+            #wrapper { position: relative; max-width: 960px; }
+            #modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-color: #000000aa; }
+            #modal div.choice-box { background-color: #fff; max-width: 750px; margin: 29px auto; padding-bottom: 20px; }
+            #modal .container, #modal h2 { margin: 5px; }
+            #modal .modal-title { background-color: #475463; color: #fff; }
+            @keyframes fadebg {
+                0% { opacity: 0; }
+                100% { opacity: 1; }
+            }
+            @keyframes emoji {
+                0% { font-size: 15px; }
+                100% { font-size: 100px; }
+            }
+            #modal.animate { animation: fadebg 5s; }
+            #modal.animate::after {
+                position: absolute;
+                bottom: 0;
+                animation: emoji 5s;
+                font-size: 100px;
+                text-align: center;
+                width: 100%;
+                display: block;
+            }
+            #modal.animate.train { background-color: #ddd; }
+            #modal.animate.train::after { content: '🚇'; }
+            #modal.animate.walk { background-color: #ccc; }
+            #modal.animate.walk::after { content: '👟'; }
+            #modal.medical { background-color: red; }
+            #modal.animate.medical::after { content: '🚑'; }
+            #modal.justice { background-color: black; }
+            #modal.animate.justice::after { content: '🚔'; }
+            #modal.sleep { background-color: #444; }
+            #modal.sleep::after { content: '🛌'; }
+            #modal.park { background-color: #abdcad; }
+            #modal.park::after { content: '🌲'; }
+            #modal ul.bp { list-style-type: none; }
+        </style>
+    </head>
+    <body>
+        <div class="container" id="wrapper">
+            <div id="modal"></div>
+            <canvas id="game">
+            </canvas>
+        </div>
+        <script type="module" src="reap.js?version=1"></script>
+    </body>
+</html>
