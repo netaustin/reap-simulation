@@ -49,14 +49,47 @@
             #modal.park { background-color: #abdcad; }
             #modal.park::after { content: '🌲'; }
             #modal ul.bp { list-style-type: none; }
+            /* Name prompt modal - only shown for managed sessions */
+            #student-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; background-color: #000000aa; z-index: 1000; }
+            #student-modal .modal-content { background-color: #fff; max-width: 500px; margin: 100px auto; padding: 30px; border-radius: 8px; }
+            #student-modal h2 { margin-top: 0; color: #475463; }
+            #student-modal input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+            #student-modal button { padding: 10px 20px; margin: 10px 5px 0 0; }
+            #student-modal .error { color: red; margin-top: 10px; }
         </style>
     </head>
     <body>
+        <!-- Name prompt - only shown when ?session= parameter exists -->
+        <div id="student-modal">
+            <div class="modal-content">
+                <h2>Welcome to the Reentry Simulation</h2>
+                <p>Please enter your name to begin:</p>
+                <div id="student-form">
+                    <input type="text" id="student-name" placeholder="Your Name" />
+                    <input type="email" id="student-email" placeholder="Your Email" style="display: none;" />
+                    <div class="error" id="form-error"></div>
+                    <button onclick="submitStudentInfo()">Start Simulation</button>
+                </div>
+                <div id="resume-options" style="display: none;"></div>
+            </div>
+        </div>
         <div class="container" id="wrapper">
             <div id="modal"></div>
+            <div id="pause-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center;">
+                <div style="text-align: center; color: #fff;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⏸️</div>
+                    <h2 style="margin: 0 0 10px 0; font-size: 28px;">Session Paused</h2>
+                    <p style="color: #aaa; font-size: 16px;">Your instructor has paused the simulation.<br>Please wait for them to resume.</p>
+                </div>
+            </div>
+            <div id="player-name-bar" style="display: none; background: #475463; color: #fff; padding: 8px 15px; font-size: 14px; border-radius: 4px 4px 0 0;">
+                Playing as: <strong id="player-name-display"></strong>
+            </div>
             <canvas id="game">
             </canvas>
         </div>
         <script type="module" src="reap.js?version=1"></script>
+        <script src="config.js"></script>
+        <script src="analytics.js"></script>
     </body>
 </html>

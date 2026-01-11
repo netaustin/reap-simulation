@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="mini.min.css">
+    <title>REAP - Instructor Dashboard (Private)</title>
+    <style>
+        body { background-color: #1a1a2e; color: #eee; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .header { background-color: #8b0000; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; color: #fff; }
+        .header h1:hover { color: #ffd; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .header .warning { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 4px; font-size: 14px; }
+        .nav-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .nav-btn:hover { background: rgba(255,255,255,0.3); }
+        .container { width: 100%; padding: 20px 40px; box-sizing: border-box; }
+
+        /* Controls */
+        .controls { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; }
+        .controls button { padding: 12px 24px; font-size: 16px; }
+        .controls button.pause { background: #e94560; }
+        .controls button.resume { background: #27ae60; }
+        .session-status { font-size: 18px; }
+        .status-paused { color: #e94560; font-weight: bold; }
+        .status-active { color: #27ae60; }
+
+        /* Cold calling section */
+        .cold-call { background: #16213e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .cold-call h2 { margin: 0 0 5px 0; color: #e94560; }
+        .cold-call-suggestion { background: #0f3460; padding: 20px; border-radius: 8px; text-align: center; }
+        .cold-call-label { font-size: 12px; color: #aaa; text-transform: uppercase; margin-bottom: 5px; }
+        .cold-call-name { font-size: 36px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .cold-call-name:hover { color: #e94560; }
+        .cold-call-reason { color: #aaa; font-size: 14px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .cold-call-actions { display: flex; gap: 10px; justify-content: center; }
+        .btn-discuss { background: #e94560; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-discuss:hover { background: #c73e54; }
+        .btn-next { background: #475463; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-next:hover { background: #5a6a7a; }
+
+        /* Player grid */
+        .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .player-card { background: #16213e; padding: 15px; border-radius: 8px; border-left: 4px solid #0f3460; }
+        .player-card.inactive { border-left-color: #e94560; opacity: 0.7; }
+        .player-card.active { border-left-color: #27ae60; }
+        .player-card .name { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .player-card .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px; }
+        .player-card .stat { text-align: center; }
+        .player-card .stat-value { font-size: 18px; font-weight: bold; color: #e94560; }
+        .player-card .stat-label { color: #aaa; }
+        .player-card .activity { margin-top: 10px; padding-top: 10px; border-top: 1px solid #0f3460; font-size: 12px; color: #aaa; }
+        .player-card .activity.stale { color: #e94560; }
+
+        /* Sections */
+        h2 { color: #fff; margin: 30px 0 15px 0; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; }
+
+        /* Player cards clickable */
+        .player-card { cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; position: relative; }
+        .player-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .player-card:hover .click-hint { opacity: 1; }
+        .click-hint { position: absolute; top: 10px; right: 10px; font-size: 11px; color: #aaa; opacity: 0; transition: opacity 0.2s; }
+        .player-card .view-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid #0f3460; font-size: 12px; color: #3498db; text-align: center; }
+        .player-card:hover .view-details { color: #e94560; }
+
+        /* Student detail modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #16213e; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { background: #0f3460; padding: 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { margin: 0; color: #fff; }
+        .modal-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .modal-body { padding: 20px; }
+        .detail-section { margin-bottom: 20px; }
+        .detail-section h3 { color: #e94560; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; }
+        .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .detail-stat { background: #0f3460; padding: 15px; border-radius: 8px; text-align: center; }
+        .detail-stat-value { font-size: 24px; font-weight: bold; color: #e94560; }
+        .detail-stat-label { font-size: 12px; color: #aaa; margin-top: 5px; }
+        .items-list { display: flex; flex-wrap: wrap; gap: 10px; }
+        .item-tag { background: #0f3460; padding: 8px 14px; border-radius: 20px; font-size: 13px; }
+        .item-tag.important { background: #27ae60; }
+        .item-tag.document { background: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 onclick="goToPublicDashboard()" style="cursor: pointer;">Instructor Dashboard</h1>
+        <div class="header-right">
+            <button onclick="goToPublicDashboard()" class="nav-btn">← Public Dashboard</button>
+            <div class="warning">PRIVATE - Do not share screen</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="session-status">
+                Session: <strong id="session-id">-</strong>
+                <span id="session-status" class="status-active">Active</span>
+            </div>
+            <button id="pause-btn" class="pause" onclick="togglePause()">Pause Game</button>
+            <button onclick="refreshNow()">Refresh Now</button>
+        </div>
+
+        <div class="cold-call">
+            <h2>Discussion Helper</h2>
+            <p style="color: #aaa; margin: 0 0 15px 0; font-size: 14px;">
+                Click on a suggested student to see their backpack and discuss their experience
+            </p>
+            <div class="cold-call-suggestion">
+                <div class="cold-call-label">Suggested student to discuss:</div>
+                <div class="cold-call-name" id="cold-call-name" onclick="showColdCallDetail()" style="cursor: pointer;">-</div>
+                <div class="cold-call-reason" id="cold-call-reason">Waiting for players...</div>
+                <div class="cold-call-actions">
+                    <button onclick="showColdCallDetail()" class="btn-discuss">View & Discuss</button>
+                    <button onclick="nextColdCall()" class="btn-next">Skip to Next</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <h2>All Players (<span id="player-count">0</span>)</h2>
+            <div>
+                <label><input type="checkbox" id="sort-inactive" onchange="refreshDisplay()"> Sort inactive first</label>
+            </div>
+        </div>
+
+        <div class="players-grid" id="players-grid">
+            <p style="color: #aaa;">Waiting for players to join...</p>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div class="modal-overlay" id="student-modal" onclick="closeStudentModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="modal-student-name">Student Name</h2>
+                <button class="modal-close" onclick="closeStudentModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-section">
+                    <h3>Current Status</h3>
+                    <div class="detail-grid">
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-money">$0</div>
+                            <div class="detail-stat-label">Money</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-health">0%</div>
+                            <div class="detail-stat-label">Health</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-time">0h</div>
+                            <div class="detail-stat-label">Time Played</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h3>System Interactions</h3>
+                    <div class="detail-grid">
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-arrests">0</div>
+                            <div class="detail-stat-label">Arrests</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-violations">0</div>
+                            <div class="detail-stat-label">Violations</div>
+                        </div>
+                        <div class="detail-stat">
+                            <div class="detail-stat-value" id="modal-hospital">0</div>
+                            <div class="detail-stat-label">Hospital Visits</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h3>Housing</h3>
+                    <div id="modal-housing" style="font-size: 16px;">Unknown</div>
+                </div>
+                <div class="detail-section">
+                    <h3>Backpack Contents</h3>
+                    <div class="items-list" id="modal-items">
+                        <span style="color: #aaa;">No items</span>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h3>Last Activity</h3>
+                    <div id="modal-activity" style="color: #aaa; font-size: 14px;">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        const API_BASE_URL = (typeof REAP_CONFIG !== 'undefined' && REAP_CONFIG.apiUrl) || 'http://localhost:5847/api';
+        let currentSessionId = null;
+        let isPaused = false;
+        let playersData = [];      // Engagement data (activity tracking)
+        let playersFullData = [];  // Full analytics data (includes items)
+        let coldCallIndex = 0;
+
+        // Item display names and categories
+        const itemLabels = {
+            'watch': { name: 'Watch', category: 'item' },
+            'ssn': { name: 'Social Security Card', category: 'document' },
+            'birthcertificate': { name: 'Birth Certificate', category: 'document' },
+            'stateID': { name: 'State ID', category: 'document' },
+            'halfwayhouseinvite': { name: 'Halfway House Invite', category: 'document' },
+            'rentalkey': { name: 'Rental Key', category: 'important' },
+            'jobid': { name: 'Work ID Badge', category: 'important' },
+            'transitcard': { name: 'Transit Card', category: 'item' },
+            'phone': { name: 'Phone', category: 'item' },
+            'bankcard': { name: 'Bank Card', category: 'important' }
+        };
+
+        const housingLabels = {
+            'halfwayhouse': 'Halfway House',
+            'heightshousing': 'Apartment',
+            'unknown': 'Unhoused / Shelter'
+        };
+
+        // Get session from URL
+        function getSessionFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session');
+        }
+
+        // Toggle pause
+        async function togglePause() {
+            if (!currentSessionId) return;
+
+            const endpoint = isPaused ? 'resume' : 'pause';
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/${encodeURIComponent(currentSessionId)}/${endpoint}`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    isPaused = !isPaused;
+                    updatePauseUI();
+                }
+            } catch (error) {
+                console.error('Error toggling pause:', error);
+            }
+        }
+
+        // Update pause button UI
+        function updatePauseUI() {
+            const btn = document.getElementById('pause-btn');
+            const status = document.getElementById('session-status');
+
+            if (isPaused) {
+                btn.textContent = 'Resume Game';
+                btn.className = 'resume';
+                status.textContent = 'PAUSED';
+                status.className = 'status-paused';
+            } else {
+                btn.textContent = 'Pause Game';
+                btn.className = 'pause';
+                status.textContent = 'Active';
+                status.className = 'status-active';
+            }
+        }
+
+        // Refresh data
+        async function refreshNow() {
+            if (!currentSessionId) return;
+
+            try {
+                // Fetch engagement data (for activity tracking)
+                const engagementRes = await fetch(`${API_BASE_URL}/analytics/${encodeURIComponent(currentSessionId)}/engagement`);
+                if (engagementRes.ok) {
+                    const engagementData = await engagementRes.json();
+                    playersData = engagementData.players || [];
+                }
+
+                // Fetch full analytics data (for items, housing, etc.)
+                const analyticsRes = await fetch(`${API_BASE_URL}/analytics/${encodeURIComponent(currentSessionId)}`);
+                if (analyticsRes.ok) {
+                    const analyticsData = await analyticsRes.json();
+                    playersFullData = analyticsData.players || [];
+                }
+
+                // Also check pause status
+                const sessionRes = await fetch(`${API_BASE_URL}/sessions/${encodeURIComponent(currentSessionId)}`);
+                if (sessionRes.ok) {
+                    const sessionData = await sessionRes.json();
+                    isPaused = sessionData.paused;
+                    updatePauseUI();
+                }
+
+                refreshDisplay();
+                updateColdCall();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Refresh display
+        function refreshDisplay() {
+            const container = document.getElementById('players-grid');
+            const sortInactive = document.getElementById('sort-inactive').checked;
+
+            document.getElementById('player-count').textContent = playersData.length;
+
+            if (playersData.length === 0) {
+                container.innerHTML = '<p style="color: #aaa;">Waiting for players to join...</p>';
+                return;
+            }
+
+            let sorted = [...playersData];
+            if (sortInactive) {
+                sorted.sort((a, b) => a.recent_activity - b.recent_activity);
+            }
+
+            container.innerHTML = sorted.map(player => {
+                const isActive = player.recent_activity > 0;
+                const secondsSince = Math.round(player.seconds_since_update);
+                const activityText = secondsSince < 60
+                    ? `Active ${secondsSince}s ago`
+                    : secondsSince < 3600
+                        ? `Active ${Math.round(secondsSince/60)}m ago`
+                        : `Inactive for ${Math.round(secondsSince/3600)}h`;
+
+                // Escape name for onclick
+                const escapedName = player.name.replace(/'/g, "\\'");
+
+                return `
+                    <div class="player-card ${isActive ? 'active' : 'inactive'}" onclick="showStudentDetail('${escapedName}')">
+                        <span class="click-hint">Click for details</span>
+                        <div class="name">${player.name}</div>
+                        <div class="stats">
+                            <div class="stat">
+                                <div class="stat-value">$${player.money}</div>
+                                <div class="stat-label">Money</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${player.health}%</div>
+                                <div class="stat-label">Health</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${player.playedHours}h</div>
+                                <div class="stat-label">Time</div>
+                            </div>
+                        </div>
+                        <div class="stats" style="margin-top: 10px;">
+                            <div class="stat">
+                                <div class="stat-value">${player.arrests}</div>
+                                <div class="stat-label">Arrests</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${player.violations}</div>
+                                <div class="stat-label">Violations</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${player.total_states}</div>
+                                <div class="stat-label">Actions</div>
+                            </div>
+                        </div>
+                        <div class="activity ${isActive ? '' : 'stale'}">${activityText}</div>
+                        <div class="view-details">View Backpack & Details →</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update cold call suggestion
+        function updateColdCall() {
+            const nameEl = document.getElementById('cold-call-name');
+            const reasonEl = document.getElementById('cold-call-reason');
+
+            if (playersData.length === 0) {
+                nameEl.textContent = '-';
+                reasonEl.textContent = 'Waiting for players...';
+                return;
+            }
+
+            // Sort by least active
+            const sorted = [...playersData].sort((a, b) => a.recent_activity - b.recent_activity);
+
+            if (coldCallIndex >= sorted.length) {
+                coldCallIndex = 0;
+            }
+
+            const player = sorted[coldCallIndex];
+            nameEl.textContent = player.name;
+
+            // Generate reason
+            let reasons = [];
+            if (player.recent_activity === 0) {
+                reasons.push('Inactive - may need help');
+            }
+            if (player.arrests > 0) {
+                reasons.push(`${player.arrests} arrest(s) - discuss experience`);
+            }
+            if (player.violations > 0) {
+                reasons.push(`${player.violations} violation(s) - discuss challenges`);
+            }
+            if (player.health < 50) {
+                reasons.push('Low health - discuss trade-offs');
+            }
+            if (player.money < 20) {
+                reasons.push('Low funds - discuss financial barriers');
+            }
+
+            reasonEl.textContent = reasons.length > 0 ? reasons.join(' | ') : 'Random selection';
+        }
+
+        // Next cold call
+        function nextColdCall() {
+            coldCallIndex++;
+            updateColdCall();
+        }
+
+        // Show cold call student detail
+        function showColdCallDetail() {
+            const nameEl = document.getElementById('cold-call-name');
+            const name = nameEl.textContent;
+            if (name && name !== '-') {
+                showStudentDetail(name);
+            }
+        }
+
+        // Navigate to public dashboard
+        function goToPublicDashboard() {
+            window.location.href = `dashboard.html?session=${encodeURIComponent(currentSessionId)}`;
+        }
+
+        // Show student detail modal
+        function showStudentDetail(playerName) {
+            // Find player in full data
+            const player = playersFullData.find(p => p.name === playerName);
+            const engagement = playersData.find(p => p.name === playerName);
+
+            if (!player) {
+                console.error('Player not found:', playerName);
+                return;
+            }
+
+            // Populate modal
+            document.getElementById('modal-student-name').textContent = player.name;
+            document.getElementById('modal-money').textContent = `$${player.money || 0}`;
+            document.getElementById('modal-health').textContent = `${player.health || 0}%`;
+            document.getElementById('modal-time').textContent = `${player.playedHours || 0}h`;
+            document.getElementById('modal-arrests').textContent = player.arrests || 0;
+            document.getElementById('modal-violations').textContent = player.violations || 0;
+            document.getElementById('modal-hospital').textContent = player.hospitalvisits || 0;
+            document.getElementById('modal-housing').textContent = housingLabels[player.home] || player.home || 'Unknown';
+
+            // Items
+            const itemsContainer = document.getElementById('modal-items');
+            const items = player.items || [];
+            if (items.length === 0) {
+                itemsContainer.innerHTML = '<span style="color: #aaa;">No items</span>';
+            } else {
+                itemsContainer.innerHTML = items.map(item => {
+                    const info = itemLabels[item] || { name: item, category: 'item' };
+                    return `<span class="item-tag ${info.category}">${info.name}</span>`;
+                }).join('');
+            }
+
+            // Activity
+            if (engagement) {
+                const secondsSince = Math.round(engagement.seconds_since_update);
+                let activityText;
+                if (secondsSince < 60) {
+                    activityText = `Last active ${secondsSince} seconds ago`;
+                } else if (secondsSince < 3600) {
+                    activityText = `Last active ${Math.round(secondsSince/60)} minutes ago`;
+                } else {
+                    activityText = `Last active ${Math.round(secondsSince/3600)} hours ago`;
+                }
+                document.getElementById('modal-activity').textContent = activityText;
+            } else {
+                document.getElementById('modal-activity').textContent = 'Unknown';
+            }
+
+            // Show modal
+            document.getElementById('student-modal').style.display = 'flex';
+        }
+
+        // Close student detail modal
+        function closeStudentModal(event) {
+            if (!event || event.target === document.getElementById('student-modal')) {
+                document.getElementById('student-modal').style.display = 'none';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            currentSessionId = getSessionFromUrl();
+            if (!currentSessionId) {
+                alert('No session specified');
+                return;
+            }
+
+            document.getElementById('session-id').textContent = currentSessionId;
+
+            // Handle self-directed session differently
+            if (currentSessionId === 'SELF-DIRECTED') {
+                document.getElementById('session-id').textContent = 'Self-Directed (Anonymous)';
+                // Hide controls that don't apply
+                document.querySelector('.controls').style.display = 'none';
+                document.querySelector('.cold-call').style.display = 'none';
+                // Update header
+                document.querySelector('.header').style.backgroundColor = '#16213e';
+                document.querySelector('.warning').textContent = 'Players who used the simulation without a class session';
+                // Update section header
+                document.querySelector('.section-header h2').innerHTML = 'Anonymous Players (<span id="player-count">0</span>)';
+            }
+
+            // Initial fetch
+            refreshNow();
+
+            // Auto-refresh every 5 seconds
+            setInterval(refreshNow, 5000);
+        });
+    </script>
+</body>
+</html>

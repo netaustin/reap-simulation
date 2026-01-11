@@ -1071,6 +1071,7 @@ const init = () => {
   const { width } = canvas.getBoundingClientRect();
   const height = width * (IMGDIMS.HEIGHT / IMGDIMS.WIDTH);
   const dims = { width, height };
+  let lastPlayedHours = 0;
   const dispatch = (change) => {
     Object.assign(state, change);
     const e = new CustomEvent('stateChange', {
@@ -1080,6 +1081,12 @@ const init = () => {
       return;
     }
     draw(dims, Object.assign({}, state), dispatch, e);
+
+    // Save state to backend when clock ticks (playedHours changes)
+    if (window.saveGameState && state.player && state.player.playedHours !== lastPlayedHours) {
+      lastPlayedHours = state.player.playedHours;
+      window.saveGameState(state);
+    }
   };
   // handle map hover states
   canvas.onmousemove = (e) => draw(dims, state, dispatch, e);
@@ -1095,11 +1102,26 @@ const init = () => {
   const loaded = () => {
     loads.push(1);
     if (loads.length == resources.length) {
+      // If analytics will handle starting (session param exists), wait for it
+      if (window.analyticsWillStart) {
+        // Analytics will call window.startGame() after name is entered
+        return;
+      }
       draw(dims, state, dispatch);
       dispatch({});
     }
   }
   resources.forEach((im) => im.onload = loaded);
+
+  // Expose startGame for analytics integration
+  window.startGame = () => {
+    draw(dims, state, dispatch);
+    dispatch({});
+    // Save initial state so player appears in dashboard immediately
+    if (window.saveGameState && state.player) {
+      window.saveGameState(state);
+    }
+  };
 }
 
 init();
