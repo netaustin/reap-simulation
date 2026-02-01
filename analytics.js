@@ -67,6 +67,17 @@ async function initAnalytics() {
 
     // Check for session parameter
     if (urlSession) {
+        // Verify session exists on server
+        try {
+            const sessionRes = await fetch(`${ANALYTICS_CONFIG.apiUrl}/sessions/${encodeURIComponent(urlSession)}`);
+            if (!sessionRes.ok) {
+                showSessionError(urlSession);
+                return;
+            }
+        } catch (e) {
+            // Server unreachable — let them play anyway
+        }
+
         // Managed session - set cookie and ask for name
         sessionId = urlSession;
         setCookie('reap_session', urlSession);
@@ -75,14 +86,26 @@ async function initAnalytics() {
         const nameKey = getPlayerNameCookieKey(urlSession);
         const existingName = getCookie(nameKey);
         if (existingName) {
-            playerName = existingName;
-            // Show name indicator and start game directly for returning users
-            showNameIndicator(existingName);
-            if (window.startGame) window.startGame();
-            startPausePolling();
+            // Verify player actually has data on the server (session may have been deleted/recreated)
+            try {
+                const checkRes = await fetch(`${ANALYTICS_CONFIG.apiUrl}/states/latest?session=${encodeURIComponent(urlSession)}&name=${encodeURIComponent(existingName)}`);
+                if (checkRes.ok) {
+                    // Player has saved data — resume directly
+                    playerName = existingName;
+                    showNameIndicator(existingName);
+                    if (window.startGame) window.startGame();
+                    startPausePolling();
+                } else {
+                    // No data found — session was likely deleted, clear stale cookie
+                    setCookie(nameKey, '', -1);
+                    showNamePrompt('');
+                }
+            } catch (e) {
+                // Server error — show prompt with pre-fill as fallback
+                showNamePrompt(existingName);
+            }
         } else {
-            // Show name prompt for this new session
-            showNamePrompt();
+            showNamePrompt('');
         }
     } else {
         // No session param - self-directed anonymous tracking, start immediately
@@ -92,14 +115,32 @@ async function initAnalytics() {
     }
 }
 
-// Show simple name prompt
-function showNamePrompt() {
+// Show error when session doesn't exist
+function showSessionError(sessionName) {
+    const modal = document.getElementById('student-modal');
+    if (modal) {
+        document.getElementById('student-form').style.display = 'none';
+        document.getElementById('resume-options').style.display = 'none';
+        var content = modal.querySelector('.modal-content');
+        if (content) {
+            content.querySelector('h2').textContent = 'Session Not Found';
+            content.querySelector('p').innerHTML = 'The session "<strong>' + sessionName + '</strong>" does not exist. Please check with your instructor that the session name is correct.' +
+                '<br><br><a href="' + window.location.pathname + '" style="color: #3498db;">Or play on your own without a class session &rarr;</a>';
+        }
+        modal.style.display = 'block';
+    }
+}
+
+// Show simple name prompt, optionally pre-filled
+function showNamePrompt(prefill) {
     const modal = document.getElementById('student-modal');
     if (modal) {
         document.getElementById('student-form').style.display = 'block';
         document.getElementById('resume-options').style.display = 'none';
         const emailField = document.getElementById('student-email');
         if (emailField) emailField.style.display = 'none';
+        const nameInput = document.getElementById('student-name');
+        if (nameInput && prefill) nameInput.value = prefill;
         modal.style.display = 'block';
     }
 }
