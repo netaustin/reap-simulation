@@ -163,9 +163,9 @@ export const events = {
     message: 'You\'re out on parole? I have to take you to jail.',
     closeButtonText: 'Okay',
     photo: 'police',
-    violation: true,
     animate: 'justice',
     exitTransaction: {
+      violation: true,
       reset: true,
       time: 1,
       addEvents: [ jailed, arraignment ],
@@ -177,8 +177,8 @@ export const events = {
     message: 'You are being transferred from your parole officer to jail.',
     closeButtonText: 'Okay',
     photo: 'police',
-    violation: true,
     exitTransaction: {
+      violation: true,
       reset: true,
       time: 1,
       addEvents: [ jailed, resentencing ],
@@ -192,6 +192,7 @@ export const events = {
       We are taking you into custody`,
     closeButtonText: 'Okay',
     exitTransaction: {
+      violation: true,
       reset: true,
       time: 1,
       addEvents: [ jailed, resentencing ],

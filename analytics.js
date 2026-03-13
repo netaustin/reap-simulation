@@ -58,9 +58,11 @@ async function initAnalytics() {
     const urlSession = getSessionFromUrl();
 
     serverAvailable = await checkServer();
+    console.log('[REAP Analytics] Server available:', serverAvailable, '| Session from URL:', urlSession);
 
     if (!serverAvailable) {
         // No server - just start game normally
+        console.log('[REAP Analytics] No server — starting game without analytics');
         if (window.startGame) window.startGame();
         return;
     }
@@ -139,16 +141,43 @@ function showNamePrompt(prefill) {
         document.getElementById('resume-options').style.display = 'none';
         const emailField = document.getElementById('student-email');
         if (emailField) emailField.style.display = 'none';
-        const nameInput = document.getElementById('student-name');
-        if (nameInput && prefill) nameInput.value = prefill;
+        // Pre-fill first/last name fields if available
+        if (prefill) {
+            const parts = prefill.split(' ');
+            const firstInput = document.getElementById('student-first-name');
+            const lastInput = document.getElementById('student-last-name');
+            if (firstInput && lastInput && parts.length >= 2) {
+                firstInput.value = parts[0];
+                lastInput.value = parts.slice(1).join(' ');
+            } else {
+                const nameInput = document.getElementById('student-name');
+                if (nameInput) nameInput.value = prefill;
+            }
+        }
         modal.style.display = 'block';
     }
 }
 
 // Submit name
 function submitStudentInfo() {
-    const nameInput = document.getElementById('student-name');
-    const name = nameInput ? nameInput.value.trim() : '';
+    const firstInput = document.getElementById('student-first-name');
+    const lastInput = document.getElementById('student-last-name');
+    const legacyInput = document.getElementById('student-name');
+
+    // Support both new (first+last) and legacy (single name) inputs
+    let name = '';
+    if (firstInput && firstInput.offsetParent !== null) {
+        const first = firstInput.value.trim();
+        const last = lastInput ? lastInput.value.trim() : '';
+        if (!first || !last) {
+            const errorDiv = document.getElementById('form-error');
+            if (errorDiv) errorDiv.textContent = 'Please enter your first and last name';
+            return;
+        }
+        name = `${first} ${last}`;
+    } else {
+        name = legacyInput ? legacyInput.value.trim() : '';
+    }
 
     if (!name) {
         const errorDiv = document.getElementById('form-error');
@@ -188,18 +217,33 @@ function showNameIndicator(name) {
 async function saveGameState(gameState) {
     if (!serverAvailable || !sessionId) return;
 
+    const payload = {
+        session: sessionId,
+        name: playerName || 'Anonymous',
+        state: gameState
+    };
+    const playerData = gameState && gameState.player ? gameState.player : gameState;
+    console.log('[REAP Save]', {
+        arrests: playerData.arrests,
+        violations: playerData.violations,
+        money: playerData.money,
+        health: playerData.health,
+        playedHours: playerData.playedHours,
+        session: sessionId,
+        name: playerName
+    });
+
     try {
-        await fetch(`${ANALYTICS_CONFIG.apiUrl}/states`, {
+        const response = await fetch(`${ANALYTICS_CONFIG.apiUrl}/states`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session: sessionId,
-                name: playerName || 'Anonymous',
-                state: gameState
-            })
+            body: JSON.stringify(payload)
         });
+        if (!response.ok) {
+            console.error('[REAP Save] Server error:', response.status, await response.text());
+        }
     } catch (e) {
-        // Silent fail
+        console.error('[REAP Save] Network error:', e);
     }
 }
 
