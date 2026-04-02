@@ -209,7 +209,7 @@ const poReview = (readPlayer, writePlayer) => {
         `You didn't get a UA test done? That's a parole violation. Please do not forget again.`
       );
       violations++;
-    } else if (player.items.indexOf('pouapass')) {
+    } else if (player.items.indexOf('pouapass') >= 0) {
       messageStack.push(`You passed your urinalysis. Good work staying clean.`);
     } else {
       messageStack.push(
@@ -261,7 +261,7 @@ const poReview = (readPlayer, writePlayer) => {
           a job. Please bring a state ID to your next visit.`
         );
         // ret.give.push('stateiddemand');
-      } else if (player.items.indexOf('birthcertificatereceipt')) {
+      } else if (player.items.indexOf('birthcertificatereceipt') >= 0) {
         messageStack.push(
           `You've requested your birth certificate. Once it arrives, you will need to get a state ID.`
         );
@@ -510,7 +510,7 @@ const transact = (state, dispatch, rawOption, location) => {
       messageHTML: option.messageHTML,
       photo: location,
       animate: option.animate,
-      closeButtonText: option.closeButtonText ? 'Okay' : option.closeButtonText,
+      closeButtonText: option.closeButtonText || 'Okay',
       exitTransaction: option.messageExitTransaction ? option.messageExitTransaction : {},
     });
   }
@@ -779,6 +779,11 @@ const visit = (state, dispatch, location, waited = 0) => {
   const { locationEvents } = player;
 
   if (playerHasWarrant(player) && randomize({ random: 'uniform', min: 0, max: 8}) == 1) {
+    player.arrests++;
+    // Save immediately so dashboard reflects the arrest before modal chain
+    if (window.saveGameState) {
+      window.saveGameState(serializePlayer(player));
+    }
     return renderModal(
       state,
       dispatch,
@@ -1057,6 +1062,29 @@ const draw = ({ width, height}, state, dispatch, e) => {
   ctx.restore();
 };
 
+const serializePlayer = (player) => ({
+  player: {
+    money: player.money,
+    health: player.health,
+    arrests: player.arrests,
+    violations: player.violations,
+    hospitalvisits: player.hospitalvisits,
+    playedHours: player.playedHours,
+    home: player.home,
+    items: [...player.items],
+    scenario: player.scenario,
+    communityservice: player.communityservice,
+    map: player.map,
+    accruedPay: player.accruedPay,
+    paychecksReady: player.paychecksReady,
+    time: player.time.getTime(),
+    lastMeal: player.lastMeal.getTime(),
+    nextProbation: player.nextProbation.getTime(),
+    lastStrength: player.lastStrength.getTime(),
+    calendar: player.calendar.map(c => ({ name: c.name, title: c.title })),
+  }
+});
+
 const init = () => {
   const state = {
     ...config(),
@@ -1071,11 +1099,23 @@ const init = () => {
   const { width } = canvas.getBoundingClientRect();
   const height = width * (IMGDIMS.HEIGHT / IMGDIMS.WIDTH);
   const dims = { width, height };
+  let lastSavedState = '';
   const dispatch = (change) => {
     Object.assign(state, change);
     const e = new CustomEvent('stateChange', {
       detail: { change },
     });
+
+    // Save state whenever key metrics change (arrests, violations, money, health, playedHours)
+    if (window.saveGameState && state.player) {
+      const p = state.player;
+      const snap = `${p.arrests}|${p.violations}|${p.money}|${p.health}|${p.playedHours}|${p.hospitalvisits}|${p.home}|${p.items.length}|${p.communityservice}|${p.map}|${p.accruedPay}`;
+      if (snap !== lastSavedState) {
+        lastSavedState = snap;
+        window.saveGameState(serializePlayer(state.player));
+      }
+    }
+
     if (nextEvent(state, dispatch)) {
       return;
     }
@@ -1095,11 +1135,26 @@ const init = () => {
   const loaded = () => {
     loads.push(1);
     if (loads.length == resources.length) {
+      // If analytics will handle starting (session param exists), wait for it
+      if (window.analyticsWillStart) {
+        // Analytics will call window.startGame() after name is entered
+        return;
+      }
       draw(dims, state, dispatch);
       dispatch({});
     }
   }
   resources.forEach((im) => im.onload = loaded);
+
+  // Expose startGame for analytics integration
+  window.startGame = () => {
+    draw(dims, state, dispatch);
+    dispatch({});
+    // Save initial state so player appears in dashboard immediately
+    if (window.saveGameState && state.player) {
+      window.saveGameState(serializePlayer(state.player));
+    }
+  };
 }
 
 init();
